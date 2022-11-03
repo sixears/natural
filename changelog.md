@@ -1,3 +1,7 @@
+0.0.1.6 2022-11-03
+==================
+- remove redundant "output" flake-utils
+
 0.0.1.5 2022-11-03
 ==================
 - flake-build-utils->1.0.0.6
