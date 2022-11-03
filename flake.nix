@@ -8,7 +8,7 @@
     more-unicode.url = "github:sixears/more-unicode/r0.0.17.5";
   };
 
-  outputs = { self, nixpkgs, flake-utils, build-utils, more-unicode }:
+  outputs = { self, nixpkgs, build-utils, more-unicode }:
     build-utils.lib.hOutputs self nixpkgs "natural" {
       deps = { inherit more-unicode; };
       ghc  = p: p.ghc8107; # for tfmt
