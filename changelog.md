@@ -1,3 +1,7 @@
+0.0.1.7 2022-11-13
+==================
+- fix fixed-package-name typo in flake-build-utils
+
 0.0.1.6 2022-11-03
 ==================
 - remove redundant "output" flake-utils
