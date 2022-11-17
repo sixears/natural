@@ -14,13 +14,13 @@
       deps = { inherit more-unicode; };
       ghc  = p: p.ghc8107; # for tfmt
 
-      deriv = { mkDerivation, base, base-unicode-symbols, lib, system }:
+      callPackage = { mkDerivation, base, base-unicode-symbols, lib, system }:
         let
           pkg = build-utils.lib.flake-def-pkg system;
         in
           mkDerivation {
             pname = "natural";
-            version = "0.0.1.8";
+            version = "0.0.1.9";
             src = ./.;
             libraryHaskellDepends = [
               base base-unicode-symbols

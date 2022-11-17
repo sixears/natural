@@ -1,3 +1,7 @@
+0.0.1.9 2022-11-18
+==================
+- use callPackage proper, like
+
 0.0.1.8 2022-11-17
 ===================
 - use callPackage to avoid callCabal2nix/IFD
