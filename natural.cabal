@@ -3,7 +3,7 @@ name:                natural
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.0.1.11
+version:             0.0.1.12
 synopsis:            Type-level natural numbers
 description:         Type-level natural numbers
 cabal-version:       >= 1.10

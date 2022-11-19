@@ -14,7 +14,7 @@
       deps = { inherit more-unicode; };
       ghc  = p: p.ghc8107; # for tfmt
 
-      callPackage = { mkDerivation, base, base-unicode-symbols, lib, system }:
+      callPackage = { mkDerivation, base, base-unicode-symbols, lib, mapPkg, system }:
         let
           pkg = build-utils.lib.flake-def-pkg system;
         in
