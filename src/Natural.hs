@@ -28,6 +28,7 @@ import qualified  Data.List
 import Control.Applicative  ( Alternative, pure )
 import Data.Bool            ( Bool( True ), otherwise )
 import Data.Eq              ( Eq( (==) ) )
+import Data.Foldable        ( Foldable )
 import Data.Ord             ( Ord( (<=), (>) ) )
 import Data.String          ( String )
 import Text.Show            ( Show( show ) )
@@ -42,6 +43,11 @@ import Data.Monoid.Unicode    ( (⊕) )
 import Data.MoreUnicode.Applicative  ( (∤), (⊵) )
 import Data.MoreUnicode.Functor      ( (⊳) )
 import Data.MoreUnicode.Natural      ( ℕ )
+import Data.MoreUnicode.Text         ( 𝕋 )
+
+-- text --------------------------------
+
+import qualified  Data.Text
 
 --------------------------------------------------------------------------------
 
@@ -168,8 +174,17 @@ four  = Sy three
 
 ------------------------------------------------------------
 
-length ∷ Data.Foldable.Foldable ψ ⇒ ψ α → ℕ
-length = GHC.Real.fromIntegral ∘ Data.Foldable.length
+class Length α where
+  length ∷ α → ℕ
+
+instance Length [α] where
+  length = GHC.Real.fromIntegral ∘ Data.Foldable.length
+
+instance Length 𝕋 where
+  length = GHC.Real.fromIntegral ∘ Data.Text.length
+
+instance Foldable ψ ⇒ Length (ψ α) where
+  length = GHC.Real.fromIntegral ∘ Data.Foldable.length
 
 fromEnum ∷ GHC.Enum.Enum α ⇒ α → ℕ
 fromEnum = GHC.Real.fromIntegral ∘ GHC.Enum.fromEnum
