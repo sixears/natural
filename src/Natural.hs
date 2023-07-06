@@ -177,9 +177,6 @@ four  = Sy three
 class Length α where
   length ∷ α → ℕ
 
-instance Length [α] where
-  length = GHC.Real.fromIntegral ∘ Data.Foldable.length
-
 instance Length 𝕋 where
   length = GHC.Real.fromIntegral ∘ Data.Text.length
 
