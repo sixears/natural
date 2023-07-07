@@ -31,6 +31,7 @@ import Data.Eq              ( Eq( (==) ) )
 import Data.Foldable        ( Foldable )
 import Data.Ord             ( Ord( (<=), (>) ) )
 import Data.String          ( String )
+import GHC.Exts             ( IsList( Item ) )
 import Text.Show            ( Show( show ) )
 
 -- base-unicode-symbols ----------------
@@ -183,6 +184,16 @@ instance Length 𝕋 where
 instance Foldable ψ ⇒ Length (ψ α) where
   length = GHC.Real.fromIntegral ∘ Data.Foldable.length
 
+class Replicate α where
+  replicate ∷ ℕ -> Item α → α
+
+instance Replicate [α] where
+  replicate = Data.List.replicate ∘ GHC.Real.fromIntegral
+
+instance Replicate 𝕋 where
+  replicate n c = Data.Text.replicate (GHC.Real.fromIntegral n)
+                                      (Data.Text.singleton c)
+
 fromEnum ∷ GHC.Enum.Enum α ⇒ α → ℕ
 fromEnum = GHC.Real.fromIntegral ∘ GHC.Enum.fromEnum
 
@@ -191,9 +202,6 @@ toEnum = GHC.Enum.toEnum ∘ GHC.Num.fromInteger ∘ GHC.Real.toInteger
 
 allEnum ∷ GHC.Enum.Enum α ⇒ [α]
 allEnum = GHC.Enum.enumFrom (toEnum 0)
-
-replicate ∷ ℕ → α → [α]
-replicate = Data.List.replicate ∘ GHC.Real.fromIntegral
 
 zeroOneOrTwo :: Alternative f => f a -> f [a]
 zeroOneOrTwo a = go (2 :: ℕ)
