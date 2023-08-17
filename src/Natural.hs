@@ -4,56 +4,80 @@
 {-# LANGUAGE UnicodeSyntax     #-}
 
 module Natural
-  ( AtMost( Cons, Nil ), Countable( count ), Nat( S, Z ), Natty( Sy, Zy), None
+  ( AtMost(Cons, Nil)
+  , Countable(count)
+  , Four
+  , Nat(S, Z)
+  , Natty(Sy, Zy)
+  , None
+  , One
+  , Three
+  , Two
   , ℕ
-  , atMost, atMostOne, atMostTwo
+  , allEnum
+  , atMost
+  , atMostOne
+  , atMostTwo
+  , four
+  , fromEnum
+  , length
+  , natNeg
+  , none
+  , one
+  , replicate
+  , three
+  , toEnum
+  , two
+  , unNegate
   , zeroOneOrTwo
+  , (⊖)
+  ) where
 
-  , One, Two, Three, Four
-  , none, one, two, three, four
-  , allEnum, fromEnum, length, replicate, toEnum
-  )
-where
-
-import qualified  GHC.Enum
-import qualified  GHC.Num
-import qualified  GHC.Real
-import GHC.Num  ( (+), (-) )
+import GHC.Enum qualified
+import GHC.Num  ( abs, (+), (-) )
+import GHC.Num qualified
+import GHC.Real qualified
 
 -- base --------------------------------
 
-import qualified  Data.Foldable
-import qualified  Data.List
+import Data.Foldable qualified
+import Data.List qualified
 
-import Control.Applicative  ( Alternative, pure )
-import Data.Bool            ( Bool( True ), otherwise )
-import Data.Eq              ( Eq( (==) ) )
-import Data.Foldable        ( Foldable )
-import Data.Ord             ( Ord( (<=), (>) ) )
-import Data.String          ( String )
-import GHC.Exts             ( IsList( Item ) )
-import Text.Show            ( Show( show ) )
+import Control.Applicative ( Alternative, pure )
+import Data.Bool           ( Bool(True), otherwise )
+import Data.Eq             ( Eq((==)) )
+import Data.Foldable       ( Foldable )
+import Data.Function       ( ($) )
+import Data.Ord            ( Ord((<), (<=), (>)) )
+import Data.String         ( String )
+import GHC.Exts            ( IsList(Item) )
+import Prelude.Unicode     ( ℤ, (≥) )
+import Text.Show           ( Show(show) )
 
 -- base-unicode-symbols ----------------
 
-import Data.Function.Unicode  ( (∘) )
-import Data.Monoid.Unicode    ( (⊕) )
+import Data.Function.Unicode ( (∘) )
+import Data.Monoid.Unicode   ( (⊕) )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Applicative  ( (∤), (⊵) )
-import Data.MoreUnicode.Functor      ( (⊳) )
-import Data.MoreUnicode.Natural      ( ℕ )
-import Data.MoreUnicode.Text         ( 𝕋 )
+import Data.MoreUnicode.Applicative ( (∤), (⊵) )
+import Data.MoreUnicode.Functor     ( (⊳) )
+import Data.MoreUnicode.Natural     ( ℕ )
+import Data.MoreUnicode.Text        ( 𝕋 )
 
 -- text --------------------------------
 
-import qualified  Data.Text
+import Data.Text qualified
 
 --------------------------------------------------------------------------------
 
+data NumSign = SignPlus | SignMinus
+
+------------------------------------------------------------
+
 class Countable α where
-  count :: α -> ℕ
+  count :: α → ℕ
 
 instance Countable (AtMost n a) where
   count Nil        = 0
@@ -65,25 +89,25 @@ instance Countable (AtMost n a) where
    http://stackoverflow.com/questions/39690844/haskell-how-do-i-create-a-function-that-allows-none-one-or-two-applicatives
 -}
 
-data Nat = Z | S Nat
+data Nat = Z
+         | S Nat
   deriving (Eq, Ord, Show)
 
 instance Countable Nat where
-  count Z = 0
+  count Z     = 0
   count (S n) = 1 + count n
 
 ------------------------------------------------------------
 
-data Natty n where
-  Zy :: Natty 'Z
-  Sy :: Natty n -> Natty ('S n)
+data Natty n where Zy :: Natty 'Z
+                   Sy :: Natty n -> Natty ('S n)
 
 instance Countable (Natty n) where
-  count Zy = 0
+  count Zy     = 0
   count (Sy n) = 1 + count n
 
 _show ∷ Natty n → String
-_show Zy = "'Z"
+_show Zy     = "'Z"
 _show (Sy n) = "'S " ⊕ _show n
 
 instance Show (Natty n) where
@@ -131,9 +155,8 @@ instance Ord (Natty n) where
 
 ------------------------------------------------------------
 
-data AtMost n a where
-  Nil :: AtMost n a
-  Cons :: a -> AtMost n a -> AtMost ('S n) a
+data AtMost n a where Nil :: AtMost n a
+                      Cons :: a -> AtMost n a -> AtMost ('S n) a
 
 instance Eq (AtMost n a) where
   a == b = (count a) == (count b)
@@ -143,13 +166,13 @@ instance Ord (AtMost n a) where
 
 ------------------------------------------------------------
 
-atMost :: Alternative f => Natty n -> f a -> f (AtMost n a)
-atMost Zy _ = pure Nil
+atMost ∷ Alternative f ⇒ Natty n → f a → f (AtMost n a)
+atMost Zy _     = pure Nil
 atMost (Sy n) a = (Cons ⊳ a ⊵ atMost n a) ∤ pure Nil
 
-atMostOne :: Alternative f => f a -> f (AtMost One a)
+atMostOne ∷ Alternative f ⇒ f a → f (AtMost One a)
 atMostOne = atMost (Sy Zy)
-atMostTwo :: Alternative f => f a -> f (AtMost Two a)
+atMostTwo ∷ Alternative f ⇒ f a → f (AtMost Two a)
 atMostTwo = atMost (Sy (Sy Zy))
 
 type None  = 'Z
@@ -185,7 +208,7 @@ instance Foldable ψ ⇒ Length (ψ α) where
   length = GHC.Real.fromIntegral ∘ Data.Foldable.length
 
 class Replicate α where
-  replicate ∷ ℕ -> Item α → α
+  replicate ∷ ℕ → Item α → α
 
 instance Replicate [α] where
   replicate = Data.List.replicate ∘ GHC.Real.fromIntegral
@@ -203,11 +226,26 @@ toEnum = GHC.Enum.toEnum ∘ GHC.Num.fromInteger ∘ GHC.Real.toInteger
 allEnum ∷ GHC.Enum.Enum α ⇒ [α]
 allEnum = GHC.Enum.enumFrom (toEnum 0)
 
-zeroOneOrTwo :: Alternative f => f a -> f [a]
+zeroOneOrTwo ∷ Alternative f ⇒ f a → f [a]
 zeroOneOrTwo a = go (2 :: ℕ)
   where
     go n
       | n > 0 = ((:) ⊳ a ⊵ go (n - 1)) ∤ pure []
       | otherwise = pure []
+
+----------------------------------------
+
+{-| subtract `y` from `x`, but if that would go negative, return 0 -}
+natNeg ∷ ℕ → ℕ → ℕ
+natNeg x y = if x ≥ y then x - y else 0
+
+{-| alias for `natNeg` -}
+(⊖) ∷ ℕ → ℕ → ℕ
+(⊖) = natNeg
+
+{-| split an integer into a natural number and a `NumSign` -}
+unNegate ∷ ℤ → (NumSign,ℕ)
+unNegate n | n < 0     = (SignMinus, GHC.Real.fromIntegral $ abs n)
+           | otherwise = (SignPlus,  GHC.Real.fromIntegral n)
 
 -- that's all, folks! ----------------------------------------------------------
