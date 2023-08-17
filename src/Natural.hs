@@ -10,6 +10,7 @@ module Natural
   , Nat(S, Z)
   , Natty(Sy, Zy)
   , None
+  , NumSign(..)
   , One
   , Three
   , Two
