@@ -509,7 +509,6 @@ a ⊖ b = if b > a
 (⨺) ∷ ∀ ν η . (Unsigned ν, Integral ν, MonadError BoundedError η)⇒ ν → ν → η ν
 (⨺) = (⊖)
 
--- ASSERT: log₂ (a × b) ≡ log₂ a + log₂ b
 (⊗) ∷ ∀ ε ν η . (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν,
                AsBoundedError ε, MonadError ε η) ⇒
       ν → ν → η ν
