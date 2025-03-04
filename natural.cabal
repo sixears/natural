@@ -14,17 +14,46 @@ maintainer:          haskell@sixears.com
 build-type:          Simple
 library
   ghc-options:        -O2 -W -Wall -fhelpful-errors
-  exposed-modules:    Natural
+  exposed-modules:    Natural, Natural.BoundedError, Natural.T.Natural
   other-modules:
-  default-extensions: FlexibleInstances
+  default-extensions: ConstrainedClassMethods
+                    , DeriveAnyClass
+                    , DeriveGeneric
+                    , FlexibleInstances
                     , ImportQualifiedPost
+                    , InstanceSigs
+                    , LambdaCase
                     , NoImplicitPrelude
+                    , PatternSynonyms
+                    , ScopedTypeVariables
+                    , RankNTypes
+                    , TypeApplications
+                    , TypeFamilies
                     , TypeSynonymInstances
-  build-depends:      base, base-unicode-symbols, text
 
-                    , more-unicode >= 0.0.17.12
+  build-depends:      base, base-unicode-symbols, bytestring, data-textual
+                    , deepseq, lens, mtl, tasty, tasty-hunit, tasty-quickcheck
+                    , text, text-printer
+
+                    , base0t        >= 0.0.1.14
+                    , has-callstack >= 1.0.2.0
+                    , more-unicode  >= 0.0.17.12
 
   hs-source-dirs:      src
+  default-language:    Haskell2010
+
+-------------------------------------------------------------------------------
+
+test-suite test
+  -- add  -rtsopts -prof -auto-all  for profiling
+  ghc-options:         -W -Wall -fhelpful-errors
+  type:                exitcode-stdio-1.0
+  main-is:             natural.hs
+  hs-source-dirs:      t
+  build-depends:       base, tasty
+
+                     , natural
+  default-extensions:  NoImplicitPrelude
   default-language:    Haskell2010
 
 --------------------------------------------------------------------------------
