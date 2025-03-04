@@ -280,8 +280,8 @@ class ({- Num ν, -} Typeable ν) ⇒ Unsigned ν where
                 else case boundMax i' of
                        𝕹 → return i'
                        𝕵 m → if toInteger i > m
-                             then throwUpperBoundError (typeOf i') m
-                                                       (toInteger i)
+                             then throwUpperBoundError (typeOf i')
+                                                       (toInteger i) m
                              else return i'
 
   ı ∷ ∀ ε β η . (Integral ν, Integral β, AsBoundedError ε, MonadError ε η) ⇒
