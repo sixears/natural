@@ -17,12 +17,16 @@ library
   exposed-modules:    Natural, Natural.BoundedError, Natural.T.Natural
   other-modules:
   default-extensions: ConstrainedClassMethods
+                    , DataKinds
                     , DeriveAnyClass
                     , DeriveGeneric
                     , FlexibleInstances
+                    , FunctionalDependencies
+                    , GADTs
                     , ImportQualifiedPost
                     , InstanceSigs
                     , LambdaCase
+                    , MultiParamTypeClasses
                     , NoImplicitPrelude
                     , PatternSynonyms
                     , ScopedTypeVariables
@@ -30,6 +34,7 @@ library
                     , TypeApplications
                     , TypeFamilies
                     , TypeSynonymInstances
+                    , ViewPatterns
 
   build-depends:      base, base-unicode-symbols, bytestring, data-textual
                     , deepseq, lens, mtl, tasty, tasty-hunit, tasty-quickcheck
