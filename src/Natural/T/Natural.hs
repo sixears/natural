@@ -11,6 +11,7 @@ import Prelude ( ($!) )
 import Control.Exception ( ErrorCall, catch )
 import Data.Either       ( isLeft, isRight )
 import Data.Int          ( Int32, Int64 )
+import Data.Maybe        ( fromJust )
 import Data.Ord          ( Ordering(EQ, GT, LT) )
 import Data.Typeable     ( typeOf )
 import GHC.Enum          ( maxBound )
@@ -60,9 +61,9 @@ import Data.Text.Lazy qualified as LazyText
 
 import Natural              ( I64, Length(len, len_, length),
                               Unsigned(boundMax', fromI, fromI', fromI0),
-                              fromEnum, fromEnum_, propOpRespectsBounds,
-                              replicate, replicate_, toEnum, toEnum', toEnum_,
-                              (⨹), (⨺), (⨻) )
+                              allEnum, fromEnum, fromEnum_,
+                              propOpRespectsBounds, replicate, replicate_,
+                              toEnum, toEnum', toEnum_, (⨹), (⨺), (⨻) )
 import Natural.BoundedError ( BoundedError )
 
 
@@ -233,7 +234,7 @@ fromITests = testGroup "fromI*" $
 
 replicateTests ∷ TestTree
 replicateTests = testGroup "replicate" $
-  let 𝕵 maxI64 = boundMax' (0∷I64)
+  let maxI64 = fromJust $ boundMax' (0∷I64)
   in [ testCase "𝕊 3" $ 𝕽 "ccc" @=? replicate @𝕊 @_ @(BoundedError I64) 3 'c'
      , testCase "𝕊 max@I64" $
        assertBool "should be 𝕽" ∘ isRight $
@@ -264,9 +265,8 @@ enumTests = testGroup "enum" $
   in  [ testCase "fromEnum" $ 𝕽 (1 ∷ Word8) @=? from'Enum EQ
       , testCase "fromEnum (error)" $
           assertBool "should be 𝕷" ∘ isLeft $
-            fromEnum @(BoundedError _) @_ @Word8 @(𝔼 _) 256
+            fromEnum @(BoundedError _) @I64 @Word8 @(𝔼 _) 256
       , testCase "fromEnum_" $ 0 @=? from'Enum_ LT
---ERROR CASE?
       , testCase "fromEnum_ (error)" $
           (catch_error_call $ fromEnum_ @I64 @Word8 256) ≫
             (assertBool "should be 𝕷" ∘ isLeft)
@@ -280,6 +280,7 @@ enumTests = testGroup "enum" $
       , testCase "toEnum_ (error)" $
           (catch_error_call $ toEnum_ @Word8 @Ordering 3) ≫
             (assertBool "should be 𝕷" ∘ isLeft)
+      , testCase "allEnum"   $ [LT,EQ,GT] @=? allEnum
       ]
 
 ----------------------------------------

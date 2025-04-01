@@ -19,7 +19,7 @@ module Natural
   , Two
   , Unsigned(boundMax, boundMax', fromI, fromI0, fromI', fromI_, ı, ị, ɨ)
   , ℕ
-    --  , allEnum
+  , allEnum
   , atMost
   , atMostOne
   , atMostTwo
@@ -442,7 +442,6 @@ fromEnum_ = ɨ ∘ GHC.Enum.fromEnum
 
 ----------------------------------------
 
--- one for bounded, one for not
 toEnum ∷ ∀ ε ν α η .
          (Bounded α, Enum α, Unsigned ν, Integral ν,
           AsBoundedError ε I64, MonadError ε η)⇒
@@ -459,7 +458,10 @@ toEnum input = do
 
 --------------------
 
-{- | `GHC.Enum.toEnum ∷ Int -> α`; that `Int` is `Int64` in practice…
+{- | `toEnum`, but for not (upper-)bounded types.  If you use this for
+     a type with an upper bound, hilarity and/or sadness may ensue.
+
+     `GHC.Enum.toEnum ∷ Int -> α`; that `Int` is `Int64` in practice…
      so in practice, enums (or at least toEnum) is restricted to `Int64`:
      this is necessarily reflected in the type of `BoundedError`.
 -}
@@ -467,9 +469,7 @@ toEnum' ∷ ∀ ε ν α η .
          (Enum α, Unsigned ν, Integral ν,
           AsBoundedError ε I64, MonadError ε η)⇒
          ν → η α
-toEnum' input = do
-  result ← (GHC.Enum.toEnum ∘ i64ToInt ⩺ ı) input
-  return result
+toEnum' = GHC.Enum.toEnum ∘ i64ToInt ⩺ ı
 
 --------------------
 
