@@ -3,24 +3,35 @@ module Natural.T.Natural
   ( tests
   ) where
 
-import Base0T hiding ( (⊕) )
+import Base0T  hiding ( (⊕) )
+import Prelude ( ($!) )
 
 -- base --------------------------------
 
-import Data.Either   ( isLeft )
-import Data.Int      ( Int32 )
-import Data.Typeable ( typeOf )
-import GHC.Exts      ( Int )
-import GHC.Num       ( (*) )
-import GHC.Real      ( Integral )
+import Control.Exception ( ErrorCall, catch )
+import Data.Either       ( isLeft, isRight )
+import Data.Int          ( Int32, Int64 )
+import Data.Ord          ( Ordering(EQ, GT, LT) )
+import Data.Typeable     ( typeOf )
+import GHC.Enum          ( maxBound )
+import GHC.Exts          ( Int )
+import GHC.Num           ( (*) )
+import GHC.Real          ( Integral )
 
 -- base-unicode-symbols ----------------
 
 import Prelude.Unicode ( (×) )
 
+-- bytestring --------------------------
+
+import Data.ByteString      qualified as BS
+import Data.ByteString.Lazy qualified as BSL
+
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Either    ( 𝔼, pattern 𝕽 )
+import Data.MoreUnicode.Either    ( 𝔼, pattern 𝕷, pattern 𝕽 )
+import Data.MoreUnicode.Maybe     ( pattern 𝕵 )
+import Data.MoreUnicode.Monad     ( (≫) )
 import Data.MoreUnicode.Monoid    ( ю )
 import Data.MoreUnicode.Semigroup ( (◇) )
 import Data.MoreUnicode.String    ( 𝕊 )
@@ -40,15 +51,18 @@ import Test.Tasty.QuickCheck ( testProperty )
 
 -- text --------------------------------
 
-import Data.Text qualified as Text
+import Data.Text      qualified as Text
+import Data.Text.Lazy qualified as LazyText
 
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
 
-import Natural              ( Length(len, len_, length),
-                              Unsigned(fromI, fromI', fromI0),
-                              propOpRespectsBounds, (⨹), (⨺), (⨻) )
+import Natural              ( I64, Length(len, len_, length),
+                              Unsigned(boundMax', fromI, fromI', fromI0),
+                              fromEnum, fromEnum_, propOpRespectsBounds,
+                              replicate, replicate_, toEnum, toEnum', toEnum_,
+                              (⨹), (⨺), (⨻) )
 import Natural.BoundedError ( BoundedError )
 
 
@@ -68,6 +82,8 @@ lengthTests = testGroup "length" $
      , testCase "𝕊 → ℕ  264 length" $ 264 @=? length longString
      , testCase "𝕋 → ℕ    6"        $ (  6 ∷ ℕ) @=? length ("foobar" ∷ 𝕋)
      ]
+
+----------------------------------------
 
 fromITests ∷ TestTree
 fromITests = testGroup "fromI*" $
@@ -215,6 +231,56 @@ fromITests = testGroup "fromI*" $
 
 ----------------------------------------
 
+replicateTests ∷ TestTree
+replicateTests = testGroup "replicate" $
+  let 𝕵 maxI64 = boundMax' (0∷I64)
+  in [ testCase "𝕊 3" $ 𝕽 "ccc" @=? replicate @𝕊 @_ @(BoundedError I64) 3 'c'
+     , testCase "𝕊 max@I64" $
+       assertBool "should be 𝕽" ∘ isRight $
+       replicate @𝕊 @_ @(BoundedError I64) maxI64 'c'
+     , testCase "𝕊 1+max@I64" $
+       assertBool "should be 𝕷" ∘ isLeft $
+       replicate @𝕊 @_ @(BoundedError I64) (1+maxI64) 'c'
+     , testCase "𝕋   3" $ "ccc" @=? replicate_ @𝕋 3 'c'
+     , testCase "𝕃𝕋  3" $ "ccc" @=? replicate_ @LazyText.Text 3 'c'
+     , testCase "BS  3" $ "ccc" @=? replicate_ @BS.ByteString 3 99
+     , testCase "BSL 3" $ "ccc" @=? replicate_ @BSL.ByteString 3 99
+     ]
+
+----------------------------------------
+
+enumTests ∷ TestTree
+enumTests = testGroup "enum" $
+  let from'Enum  = fromEnum @(BoundedError _) @_ @_ @(𝔼 _)
+      from'Enum_ = fromEnum_ @_ @Word8
+      to'Enum    = toEnum @(BoundedError _) @Word8 @_ @(𝔼 _)
+      to'Enum'   = toEnum' @(BoundedError _) @ℕ @_ @(𝔼 _)
+      to'Enum_   = toEnum_ @Word8
+      ii ∷ ℕ     = fromIntegral $ maxBound @Int64
+      -- ($!) is variant of ($) that forces its argument to WHNF
+      -- this is necessary to force the error to be evaluated
+      catch_error_call f =
+        catch (return $! 𝕽 $! f) (\ (e ∷ ErrorCall) -> return $ 𝕷 e)
+  in  [ testCase "fromEnum" $ 𝕽 (1 ∷ Word8) @=? from'Enum EQ
+      , testCase "fromEnum (error)" $
+          assertBool "should be 𝕷" ∘ isLeft $
+            fromEnum @(BoundedError _) @_ @Word8 @(𝔼 _) 256
+      , testCase "fromEnum_" $ 0 @=? from'Enum_ LT
+--ERROR CASE?
+      , testCase "toEnum"    $ 𝕽 GT @=? to'Enum 2
+      , testCase "toEnum (error)" $
+          assertBool "should be 𝕷" ∘ isLeft $
+            toEnum @(BoundedError _) @Word8 @Ordering @(𝔼 _) 3
+      , testCase "toEnum'"   $ 𝕽 ii @=? to'Enum' ii
+      , testCase "toEnum_"   $ EQ @=? to'Enum_ 1
+--ERROR CASE?
+      , testCase "toEnum_ (error)" $
+          (catch_error_call $ toEnum_ @Word8 @Ordering 3) ≫
+            (assertBool "should be 𝕷" ∘ isLeft)
+      ]
+
+----------------------------------------
+
 operatorTests ∷ TestTree
 operatorTests = testGroup "operators" $
   [ testCase "Word8 2 + 2" $ 4 @=? (2∷Word8) + 2
@@ -245,6 +311,7 @@ _test ∷ IO ()
 _test = defaultMain tests
 
 tests ∷ TestTree
-tests = testGroup "Natural" [ lengthTests, fromITests, operatorTests ]
+tests = testGroup "Natural" [ lengthTests, replicateTests, fromITests, enumTests
+                            , operatorTests ]
 
 -- that's all, folks! ----------------------------------------------------------

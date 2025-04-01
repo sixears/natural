@@ -7,16 +7,17 @@ module Natural
   ( AtMost(Cons, Nil)
   , Countable(count)
   , Four
+  , I64
   , Length(len, len_, length)
   , Nat(S, Z)
   , Natty(Sy, Zy)
   , None
   , NumSign(..)
   , One
-    --  , Replicate(replicate, replicate_)
+  , Replicate(replicate, replicate_)
   , Three
   , Two
-  , Unsigned(fromI, fromI0, fromI', fromI_, ı, ị, ɨ)
+  , Unsigned(boundMax, boundMax', fromI, fromI0, fromI', fromI_, ı, ị, ɨ)
   , ℕ
     --  , allEnum
   , atMost
@@ -30,8 +31,9 @@ module Natural
   , one
   , propOpRespectsBounds
   , three
-    --  , toEnum
-    --  , toEnum_
+  , toEnum
+  , toEnum'
+  , toEnum_
   , two
   , unNegate
   , zeroOneOrTwo
@@ -333,30 +335,38 @@ newtype I64 = I64 Word64
 instance Unsigned I64 where
   boundMax' _ = 𝕵 $ fromIntegral (maxBound @Int64)
 
+instance Bounded I64 where
+  minBound = 0
+  maxBound = fromIntegral $ maxBound @Int64
+
 i64ToInt ∷ I64 → Int
 i64ToInt (I64 w) = fromIntegral w
 
 ------------------------------------------------------------
 
-class (Unsigned β, Integral β) ⇒ Length α β | α → β where
-  len ∷ ∀ ε η . (AsBoundedError ε β, MonadError ε η) ⇒ α → η β
-  ℓ ∷ ∀ ε η . (AsBoundedError ε β, MonadError ε η) ⇒ α → η β
-  ℓ = len
-
+class (Unsigned ν, Integral ν) ⇒ Length α ν | α → ν where
   {-| get the unsigned length of a thing; will error if the type cannot
       represent the value.  In practice, for all currently-supported types
-      (Foldable, (Lazy)Text, (Lazy)ByteString); any type whose maxBound is ≥
-      maxBound @Int64: there will be no error -}
-  len_ ∷ Show  β ⇒ α → β
-  len_ = either (error ∘ show) id ∘ len @_ @_ @(BoundedError β)
-  щ ∷ Show β ⇒ α → β
+      (Foldable, (Lazy)Text, (Lazy)ByteString); (any type whose maxBound is ≥
+      maxBound @Int64): there will be no error. -}
+  len ∷ ∀ ε η . (AsBoundedError ε ν, MonadError ε η) ⇒ α → η ν
+  {-| unicode alias for `len` -}
+  ℓ ∷ ∀ ε η . (AsBoundedError ε ν, MonadError ε η) ⇒ α → η ν
+  ℓ = len
+
+  {-| as `len`, but any error is thrown as a runtime `BoundedError` -}
+  len_ ∷ Show  ν ⇒ α → ν
+  len_ = eBound ∘ len
+  {-| unicode alias for `len_` -}
+  щ ∷ Show ν ⇒ α → ν
   щ = len_
 
   {-| `len_`, specialized to ℕ -}
-  length ∷ Show β ⇒ α → ℕ
+  length ∷ Show ν ⇒ α → ℕ
   length = fromIntegral ∘ len_
 
-  ỻ ∷ Show β ⇒ α → ℕ
+  {-| unicode alias for `length` -}
+  ỻ ∷ Show ν ⇒ α → ℕ
   ỻ = length
 
 --------------------
@@ -387,11 +397,17 @@ instance Length BSL.ByteString Word64 where
 ------------------------------------------------------------
 
 class Replicate α ν | α -> ν where
+  {-| build an instance of type `α` from an unsigned number of `Item α`.
+      In practice, for all currently-supported types
+      ([β], (Lazy)Text, (Lazy)ByteString); (any type whose maxBound is ≥
+      maxBound @Int64): there will be no error.
+   -}
   replicate ∷ ∀ ε η.(Unsigned ν,Integral ν,AsBoundedError ε ν,MonadError ε η)⇒
               ν → Item α → η α
 
   -- in practice, there will be no error with anything that fits into an I64,
   -- that is, [0,maxBound @Int64]
+  {-| as `replicate`, but any error is thrown as a runtime `BoundedError` -}
   replicate_ ∷ (Unsigned ν, Integral ν, Show ν) ⇒ ν → Item α → α
   replicate_ n = eBound ∘ replicate n
 
@@ -414,32 +430,56 @@ instance Replicate BSL.ByteString I64 where
 
 ----------------------------------------
 
-fromEnum ∷ (Unsigned ν, Integral ν, AsBoundedError ε ν, MonadError ε η, Enum α)⇒
+fromEnum ∷ ∀ ε α ν η .
+           (Unsigned ν,Integral ν,AsBoundedError ε ν,MonadError ε η,Enum α)⇒
            α → η ν
 fromEnum = ı ∘ GHC.Enum.fromEnum
 
 --------------------
 
-fromEnum_ ∷ (Unsigned ν, Integral ν, Enum α, Show ν) ⇒ α → ν
+fromEnum_ ∷ ∀ α ν . (Unsigned ν, Integral ν, Enum α, Show ν) ⇒ α → ν
 fromEnum_ = ɨ ∘ GHC.Enum.fromEnum
 
 ----------------------------------------
 
-{- XXX
-toEnum ∷ (Unsigned ν, Integral ν, AsBoundedError ε α, MonadError ε η, Enum α) ⇒
+-- one for bounded, one for not
+toEnum ∷ ∀ ε ν α η .
+         (Bounded α, Enum α, Unsigned ν, Integral ν,
+          AsBoundedError ε I64, MonadError ε η)⇒
          ν → η α
-toEnum = GHC.Enum.toEnum ∘ i64ToInt ⩺ ı
+toEnum input = do
+  result ← (GHC.Enum.toEnum ∘ i64ToInt ⩺ ı) input
+  let max_result = maxBound
+      max_int = fromEnum_ max_result -- max input value for this enum
+  if 𝕿
+  then (if fromIntegral input > max_int
+        then throwUpperBoundError (typeOf I64) (fromIntegral input) max_int
+        else return result)
+  else return max_result -- never used, just forces the type for max_result
 
 --------------------
 
-toEnum_ ∷ (Unsigned ν, Integral ν, Enum α) ⇒ ν → α
+{- | `GHC.Enum.toEnum ∷ Int -> α`; that `Int` is `Int64` in practice…
+     so in practice, enums (or at least toEnum) is restricted to `Int64`:
+     this is necessarily reflected in the type of `BoundedError`.
+-}
+toEnum' ∷ ∀ ε ν α η .
+         (Enum α, Unsigned ν, Integral ν,
+          AsBoundedError ε I64, MonadError ε η)⇒
+         ν → η α
+toEnum' input = do
+  result ← (GHC.Enum.toEnum ∘ i64ToInt ⩺ ı) input
+  return result
+
+--------------------
+
+toEnum_ ∷ ∀ ν α . (Unsigned ν, Integral ν, Enum α) ⇒ ν → α
 toEnum_ = GHC.Enum.toEnum ∘ i64ToInt ∘ ɨ
 
 ----------------------------------------
 
 allEnum ∷ Enum α ⇒ [α]
 allEnum = GHC.Enum.enumFrom (toEnum_ @ℕ 0)
--}
 
 ----------------------------------------
 
@@ -538,7 +578,7 @@ a ⊗ b = do
   case bitWidth a + bitWidth b ≷ (1 + finiteBitSize a) of
                  GT → tooBig
                  LT → return $ a × b
-                 EQ → case over both (> loBits a) (hi a × lo b, hi a × lo b) of
+                 EQ → case over both (> loBits a) (hi a × lo b, hi b × lo a) of
                         (𝕿,_) → tooBig
                         (_,𝕿) → tooBig
                         (𝕱,𝕱) → foldM (⊕) 0 [ hi a × lo b .<<. w₂
@@ -634,16 +674,6 @@ instance Length LT.Text Word64 where
   drop   = LT.drop ∘ fromIntegral
   take   = LT.take ∘ fromIntegral
 
-class Replicate α where
-  replicate ∷ ℕ → Item α → α
-
-instance Replicate 𝕋 where
-  replicate n c = Text.replicate (fromIntegral n) (Text.singleton c)
-
-instance Replicate LT.Text where
-  replicate n c = LT.replicate (fromIntegral n) (LT.singleton c)
-
-instance Replicate [α]
 -}
 {-
 instance Length ByteString where
