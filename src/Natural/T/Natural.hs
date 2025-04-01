@@ -267,13 +267,16 @@ enumTests = testGroup "enum" $
             fromEnum @(BoundedError _) @_ @Word8 @(𝔼 _) 256
       , testCase "fromEnum_" $ 0 @=? from'Enum_ LT
 --ERROR CASE?
+      , testCase "fromEnum_ (error)" $
+          (catch_error_call $ fromEnum_ @I64 @Word8 256) ≫
+            (assertBool "should be 𝕷" ∘ isLeft)
+
       , testCase "toEnum"    $ 𝕽 GT @=? to'Enum 2
       , testCase "toEnum (error)" $
           assertBool "should be 𝕷" ∘ isLeft $
             toEnum @(BoundedError _) @Word8 @Ordering @(𝔼 _) 3
       , testCase "toEnum'"   $ 𝕽 ii @=? to'Enum' ii
       , testCase "toEnum_"   $ EQ @=? to'Enum_ 1
---ERROR CASE?
       , testCase "toEnum_ (error)" $
           (catch_error_call $ toEnum_ @Word8 @Ordering 3) ≫
             (assertBool "should be 𝕷" ∘ isLeft)
