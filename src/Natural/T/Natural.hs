@@ -3,7 +3,7 @@ module Natural.T.Natural
   ( tests
   ) where
 
-import Base0T  hiding ( (⊕) )
+import Base0T  hiding ( abs, (⊕) )
 import Prelude ( ($!) )
 
 -- base --------------------------------
@@ -30,6 +30,7 @@ import Data.ByteString.Lazy qualified as BSL
 
 -- more-unicode ------------------------
 
+import Data.MoreUnicode.Bool      ( 𝔹 )
 import Data.MoreUnicode.Either    ( 𝔼, pattern 𝕷, pattern 𝕽 )
 import Data.MoreUnicode.Maybe     ( pattern 𝕵 )
 import Data.MoreUnicode.Monad     ( (≫) )
@@ -48,7 +49,7 @@ import Test.Tasty.HUnit ( Assertion, assertBool )
 
 -- tasty-quickcheck --------------------
 
-import Test.Tasty.QuickCheck ( testProperty )
+import Test.Tasty.QuickCheck ( Property, testProperty, (==>) )
 
 -- text --------------------------------
 
@@ -60,8 +61,8 @@ import Data.Text.Lazy qualified as LazyText
 ------------------------------------------------------------
 
 import Natural              ( I64, Length(len, len_, length),
-                              Unsigned(boundMax', fromI, fromI', fromI0),
-                              allEnum, fromEnum, fromEnum_,
+                              Unsigned(boundMax', fromI, fromI', fromI0), abs,
+                              allEnum, fromEnum, fromEnum_, natNeg,
                               propOpRespectsBounds, replicate, replicate_,
                               toEnum, toEnum', toEnum_, (⨹), (⨺), (⨻) )
 import Natural.BoundedError ( BoundedError )
@@ -285,6 +286,33 @@ enumTests = testGroup "enum" $
 
 ----------------------------------------
 
+natNegTests ∷ TestTree
+natNegTests = testGroup "natNeg" $
+  let -- ($!) is variant of ($) that forces its argument to WHNF
+      -- this is necessary to force the error to be evaluated
+      catch_error_call f =
+        catch (return $! 𝕽 $! f) (\ (e ∷ ErrorCall) -> return $ 𝕷 e)
+      propNatNegNotNeg ∷ ℤ → ℤ → 𝔹
+      propNatNegNotNeg a b = (abs a) `natNeg` (abs b) ≥ 0
+      propNatNegDecreases ∷ ℤ → ℤ → 𝔹
+      propNatNegDecreases a b = (abs a) `natNeg` (abs b) ≤ (abs a)
+      propNatNegNegZero ∷ ℤ → ℤ → Property
+      propNatNegNegZero a b = (abs a) ≤ (abs b) ==> (abs a) `natNeg` (abs b) ≡ 0
+      propNatNegNonZero ∷ ℤ → ℤ → Property
+      propNatNegNonZero a b = (abs a) > (abs b) ==> (abs a) `natNeg` (abs b) ≢ 0
+      propNatNegSum ∷ ℤ → ℤ → Property
+      propNatNegSum a b = (abs a) > (abs b) ==> let r = (abs a) `natNeg` (abs b)
+                                                in  r + (abs b) ≡ (abs a)
+  in  [ testCase "natNeg" $ 2 @=? 9 `natNeg` 7
+      , testCase "natNeg" $ 0 @=? 7 `natNeg` 9
+      , testProperty "natNeg never returns a negative" propNatNegNotNeg
+      , testProperty "natNeg is always ≤ a" propNatNegDecreases
+      , testProperty "natNeg returns zero if a ≤ b" propNatNegNegZero
+      , testProperty "natNeg never returns zero if a > b" propNatNegNonZero
+      , testProperty "natNeg a > b ⇒ (a `natNeg` b) + b ≡ a" propNatNegSum
+      ]
+----------------------------------------
+
 operatorTests ∷ TestTree
 operatorTests = testGroup "operators" $
   [ testCase "Word8 2 + 2" $ 4 @=? (2∷Word8) + 2
@@ -316,6 +344,6 @@ _test = defaultMain tests
 
 tests ∷ TestTree
 tests = testGroup "Natural" [ lengthTests, replicateTests, fromITests, enumTests
-                            , operatorTests ]
+                            , natNegTests, operatorTests ]
 
 -- that's all, folks! ----------------------------------------------------------

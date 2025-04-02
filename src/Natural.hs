@@ -19,6 +19,7 @@ module Natural
   , Two
   , Unsigned(boundMax, boundMax', fromI, fromI0, fromI', fromI_, ı, ị, ɨ)
   , ℕ
+  , abs
   , allEnum
   , atMost
   , atMostOne
