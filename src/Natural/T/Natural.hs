@@ -17,7 +17,7 @@ import Data.Typeable     ( typeOf )
 import GHC.Enum          ( maxBound )
 import GHC.Exts          ( Int )
 import GHC.Num           ( (*) )
-import GHC.Real          ( Integral )
+import GHC.Real          ( Integral, rem )
 
 -- base-unicode-symbols ----------------
 
@@ -63,8 +63,9 @@ import Data.Text.Lazy qualified as LazyText
 import Natural              ( I64, Length(len, len_, length),
                               Unsigned(boundMax', fromI, fromI', fromI0), abs,
                               allEnum, fromEnum, fromEnum_, natNeg,
-                              propOpRespectsBounds, replicate, replicate_,
-                              toEnum, toEnum', toEnum_, (⨹), (⨺), (⨻) )
+                              propOpBounded, propOpRespectsBounds, replicate,
+                              replicate_, toEnum, toEnum', toEnum_, (⊞), (⊟),
+                              (⊠), (⨹), (⨺), (⨻) )
 import Natural.BoundedError ( BoundedError )
 
 
@@ -328,12 +329,25 @@ operatorTests = testGroup "operators" $
       assertBool "should be 𝕷" ∘ isLeft $ (1∷Word8) ⨺ 2
   , testCase "Word8 29 ⨻ 9" $
       assertBool "should be 𝕷" ∘ isLeft $ (29∷Word8) ⨻ 9
-  , testProperty "⨹ bounds check (W8)" (propOpRespectsBounds @Word8 (⨹) (+))
-  , testProperty "⨹ bounds check (W64)" (propOpRespectsBounds @Word64 (⨹) (+))
-  , testProperty "⨺ bounds check (W8)" (propOpRespectsBounds @Word8 (⨺) (-))
-  , testProperty "⨺ bounds check (W64)" (propOpRespectsBounds @Word64 (⨺) (-))
-  , testProperty "⨻ bounds check (W8)" (propOpRespectsBounds @Word8 (⨻) (×))
-  , testProperty "⨻ bounds check (W64)" (propOpRespectsBounds @Word64 (⨻) (×))
+  , testProperty "⨹ bounds (W8)" (propOpRespectsBounds @Word8 (⨹) (+))
+  , testProperty "⨹ bounds (W64)" (propOpRespectsBounds @Word64 (⨹) (+))
+  , testProperty "⨺ bounds (W8)" (propOpRespectsBounds @Word8 (⨺) (-))
+  , testProperty "⨺ bounds (W64)" (propOpRespectsBounds @Word64 (⨺) (-))
+  , testProperty "⨻ bounds (W8)" (propOpRespectsBounds @Word8 (⨻) (×))
+  , testProperty "⨻ bounds (W64)" (propOpRespectsBounds @Word64 (⨻) (×))
+  , testProperty "⊞ bounds (W8)"
+    (\ (a ∷ Word8) (b ∷ Word8) ->
+       a ⊞ b ≡ let r = (toInteger a) + (toInteger b)
+               in  if r > (toInteger $ maxBound @Word8)
+                   then maxBound ∷ Word8
+                   else fromIntegral r
+    )
+  , testProperty "⊞ bounds (W8)"  (propOpBounded @Word8 (⊞) (+))
+  , testProperty "⊟ bounds (W8)"  (propOpBounded @Word8 (⊟) (-))
+  , testProperty "⊠ bounds (W8)"  (propOpBounded @Word8 (⊠) (×))
+  , testProperty "⊞ bounds (W64)" (propOpBounded @Word64 (⊞) (+))
+  , testProperty "⊟ bounds (W64)" (propOpBounded @Word64 (⊟) (-))
+  , testProperty "⊠ bounds (W64)" (propOpBounded @Word64 (⊠) (×))
   ]
 
 -- tests -----------------------------------------------------------------------

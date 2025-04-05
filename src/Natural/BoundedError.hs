@@ -2,8 +2,11 @@
 
 module Natural.BoundedError
   ( AsBoundedError
+  , BEType(LowerBoundType, UpperBoundType)
   , BoundedError
+  , BoundedErrorType(LowerBound, UpperBound)
   , bound
+  , boundedErrorType
   , lowerBoundError
   , throwLowerBoundError
   , throwUpperBoundError
@@ -155,6 +158,12 @@ instance Show ν ⇒ Printable (BoundedError ν) where
   print = P.text ∘ toText ∘ _boundE
 
 ------------------------------------------------------------
+
+data BEType = UpperBoundType | LowerBoundType
+
+boundedErrorType ∷ BoundedError ν → BEType
+boundedErrorType (BoundedError (UpperBound {}) _) = UpperBoundType
+boundedErrorType (BoundedError (LowerBound {}) _) = LowerBoundType
 
 {-| create an @AsBoundedError@ for a value that may not be negative -}
 

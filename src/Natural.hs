@@ -30,6 +30,7 @@ module Natural
   , natNeg
   , none
   , one
+  , propOpBounded
   , propOpRespectsBounds
   , three
   , toEnum
@@ -40,6 +41,9 @@ module Natural
   , zeroOneOrTwo
   , (⊕)
   , (⊖)
+  , (⊞)
+  , (⊟)
+  , (⊠)
   , (⨹)
   , (⨺)
   , (⨻)
@@ -74,6 +78,7 @@ import Data.Function       ( flip )
 import Data.Int            ( Int16, Int32, Int64, Int8 )
 import Data.Kind           ( Type )
 import Data.List           ( dropWhile, zip )
+import Data.Maybe          ( fromJust, fromMaybe )
 import Data.Ord            ( Ordering(EQ, GT, LT), compare )
 import Data.Ratio          ( Ratio, denominator, numerator, (%) )
 import Data.Tuple          ( uncurry )
@@ -119,8 +124,11 @@ import Data.Text.Lazy qualified as LazyText
 --                     local imports                      --
 ------------------------------------------------------------
 
-import Natural.BoundedError ( AsBoundedError, BoundedError, bound,
-                              throwLowerBoundError, throwUpperBoundError )
+import Natural.BoundedError ( AsBoundedError,
+                              BEType(LowerBoundType, UpperBoundType),
+                              BoundedError, BoundedErrorType(UpperBound), bound,
+                              boundedErrorType, throwLowerBoundError,
+                              throwUpperBoundError )
 
 --------------------------------------------------------------------------------
 
@@ -555,6 +563,11 @@ a ⊖ b = if b > a
 (⨺) ∷ ∀ ν η . (Unsigned ν,Integral ν,MonadError (BoundedError ν) η)⇒ν → ν → η ν
 (⨺) = (⊖)
 
+(⊟) ∷ ∀ ν η . (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν) ⇒ ν → ν → ν
+a ⊟ b = case a ⨺ b of
+          𝕽 c → c
+          𝕷 e → 0
+
 (⊗) ∷ ∀ ε ν η . (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν,
                  AsBoundedError ε ν, MonadError ε η) ⇒
       ν → ν → η ν
@@ -591,16 +604,16 @@ a ⊗ b = do
                MonadError (BoundedError ν) η) ⇒ ν → ν → η ν
 (⨻) = (⊗)
 
+a ⊠ b = case a ⊗ b of
+          𝕷 e -> case boundedErrorType e of
+                   UpperBoundType -> ⅎ (boundMax' a)
+                   LowerBoundType -> 0
+          𝕽 r -> r
+
 {-| Perform a bounded operation; compare the result to a given ℤ equivalent;
     if the equivalent function would produce an out-of-bounds result, then
     our bounded operation should give a BoundedError; else, it should produce
     a bounded equivalent to the Integer value. -}
-{-
-propOpRespectsBounds ∷ (Unsigned α,Integral α,Bounded α,FiniteBits α,Show α) ⇒
-                       (∀ β . (Unsigned β,Integral β,Bounded β,FiniteBits β) ⇒
-                         β → β → 𝔼 (BoundedError α) β)
-                     → (ℤ → ℤ → ℤ) → α → α → Property
--}
 propOpRespectsBounds ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show β) ⇒
                        ( β → β → 𝔼 (BoundedError β) β)
                      → (ℤ → ℤ → ℤ) → β → β → Property
@@ -609,6 +622,41 @@ propOpRespectsBounds f g a b =
   in  if x ≡ toInteger (asb a x)
       then (toInteger ⊳ f a b) === 𝕽 x
       else property $ isLeft (f a b)
+
+
+
+(⧏) ∷ 𝕄 α → α → α
+(⧏) = flip fromMaybe
+
+(⧐) ∷ α → 𝕄 α → α
+(⧐) = fromMaybe
+
+ⅎ ∷ 𝕄 α → α
+ⅎ = fromJust
+
+{-| "is within bounds"; if a is within (l,u) inclusive, then EQ; else LT or GT
+    as appropriate -}
+
+(≶) ∷ Ord α ⇒ α → (𝕄 α, 𝕄 α) → Ordering
+a ≶ (l,u) =
+  let ḻ = a ⧐ l -- lower bound, use a if none provided
+      ū = a ⧐ u -- upper bound, use a if none provided
+  in if a < ḻ then LT else if a > ū then GT else EQ
+
+{-| Perform a bounded operation; compare the result to a given ℤ equivalent; if
+    the equivalent function would produce an out-of-bounds result, then our
+    bounded operation should give the bounded equivalent; else the bounded
+    equivalent to the Integer value. -}
+propOpBounded ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show β) ⇒
+                (β → β → β)
+              → (ℤ → ℤ → ℤ) → β → β → 𝔹
+propOpBounded f g a b =
+  let x = g (toInteger a) (toInteger b)
+      r = f a b
+  in  case x ≶ (𝕵 0, boundMax a) of
+        LT -> r == 0
+        EQ -> r == fromInteger x
+        GT -> r == ⅎ (boundMax' a)
 
 {-| split an integer into a natural number and a `NumSign` -}
 unNegate ∷ ℤ → (NumSign,ℕ)
