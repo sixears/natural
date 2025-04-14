@@ -17,7 +17,7 @@ import Data.Typeable     ( typeOf )
 import GHC.Enum          ( maxBound )
 import GHC.Exts          ( Int )
 import GHC.Num           ( (*) )
-import GHC.Real          ( Integral, rem )
+import GHC.Real          ( Integral )
 
 -- base-unicode-symbols ----------------
 
@@ -31,8 +31,7 @@ import Data.ByteString.Lazy qualified as BSL
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Bool      ( 𝔹 )
-import Data.MoreUnicode.Either    ( 𝔼, pattern 𝕷, pattern 𝕽 )
-import Data.MoreUnicode.Maybe     ( pattern 𝕵 )
+import Data.MoreUnicode.Either    ( 𝔼, pattern 𝓛, pattern 𝓡 )
 import Data.MoreUnicode.Monad     ( (≫) )
 import Data.MoreUnicode.Monoid    ( ю )
 import Data.MoreUnicode.Semigroup ( (◇) )
@@ -60,13 +59,13 @@ import Data.Text.Lazy qualified as LazyText
 --                     local imports                      --
 ------------------------------------------------------------
 
-import Natural              ( I64, Length(len, len_, length),
-                              Unsigned(boundMax', fromI, fromI', fromI0), abs,
-                              allEnum, fromEnum, fromEnum_, natNeg,
-                              propOpBounded, propOpRespectsBounds, replicate,
-                              replicate_, toEnum, toEnum', toEnum_, (⊞), (⊟),
-                              (⊠), (⨹), (⨺), (⨻) )
+import Natural              ( I64, Length(len_, length), abs, allEnum, fromEnum,
+                              fromEnum_, natNeg, propOpBounded,
+                              propOpRespectsBounds, replicate, replicate_,
+                              toEnum, toEnum', toEnum_, (⊞), (⊟), (⊠), (⨹), (⨺),
+                              (⨻) )
 import Natural.BoundedError ( BoundedError )
+import Natural.Unsigned     ( Unsigned(boundMax', fromI, fromI', fromI0) )
 
 
 --------------------------------------------------------------------------------
@@ -122,12 +121,12 @@ fromITests = testGroup "fromI*" $
       -- check that `fromI` of `input` matches value `expect`
       checkI ∷ ∀ α β . (Integral α, Unsigned α, Typeable α, Eq α, Show α,
                         Typeable β, Integral β, Show β) ⇒ β → α → TestTree
-      checkI input expect = checkI_ (𝕽 expect @=?) input (showT expect)
+      checkI input expect = checkI_ (𝓡 expect @=?) input (showT expect)
 
       -- check that `fromI0` of `input` matches value `expect`
       checkI0 ∷ ∀ α β . (Integral α, Unsigned α, Typeable α, Eq α, Show α,
                         Typeable β, Integral β, Show β) ⇒ β → α → TestTree
-      checkI0 input expect = checkI0_ (𝕽 expect @=?) input (showT expect)
+      checkI0 input expect = checkI0_ (𝓡 expect @=?) input (showT expect)
 
       -- check that `fromI'` of `input` matches value `expect`
       checkI' ∷ ∀ α β . (Integral α, Unsigned α, Typeable α, Eq α, Show α,
@@ -237,12 +236,12 @@ fromITests = testGroup "fromI*" $
 replicateTests ∷ TestTree
 replicateTests = testGroup "replicate" $
   let maxI64 = fromJust $ boundMax' (0∷I64)
-  in [ testCase "𝕊 3" $ 𝕽 "ccc" @=? replicate @𝕊 @_ @(BoundedError I64) 3 'c'
+  in [ testCase "𝕊 3" $ 𝓡 "ccc" @=? replicate @𝕊 @_ @(BoundedError I64) 3 'c'
      , testCase "𝕊 max@I64" $
-       assertBool "should be 𝕽" ∘ isRight $
+       assertBool "should be 𝓡" ∘ isRight $
        replicate @𝕊 @_ @(BoundedError I64) maxI64 'c'
      , testCase "𝕊 1+max@I64" $
-       assertBool "should be 𝕷" ∘ isLeft $
+       assertBool "should be 𝓛" ∘ isLeft $
        replicate @𝕊 @_ @(BoundedError I64) (1+maxI64) 'c'
      , testCase "𝕋   3" $ "ccc" @=? replicate_ @𝕋 3 'c'
      , testCase "𝕃𝕋  3" $ "ccc" @=? replicate_ @LazyText.Text 3 'c'
@@ -263,25 +262,25 @@ enumTests = testGroup "enum" $
       -- ($!) is variant of ($) that forces its argument to WHNF
       -- this is necessary to force the error to be evaluated
       catch_error_call f =
-        catch (return $! 𝕽 $! f) (\ (e ∷ ErrorCall) -> return $ 𝕷 e)
-  in  [ testCase "fromEnum" $ 𝕽 (1 ∷ Word8) @=? from'Enum EQ
+        catch (return $! 𝓡 $! f) (\ (e ∷ ErrorCall) -> return $ 𝓛 e)
+  in  [ testCase "fromEnum" $ 𝓡 (1 ∷ Word8) @=? from'Enum EQ
       , testCase "fromEnum (error)" $
-          assertBool "should be 𝕷" ∘ isLeft $
+          assertBool "should be 𝓛" ∘ isLeft $
             fromEnum @(BoundedError _) @I64 @Word8 @(𝔼 _) 256
       , testCase "fromEnum_" $ 0 @=? from'Enum_ LT
       , testCase "fromEnum_ (error)" $
           (catch_error_call $ fromEnum_ @I64 @Word8 256) ≫
-            (assertBool "should be 𝕷" ∘ isLeft)
+            (assertBool "should be 𝓛" ∘ isLeft)
 
-      , testCase "toEnum"    $ 𝕽 GT @=? to'Enum 2
+      , testCase "toEnum"    $ 𝓡 GT @=? to'Enum 2
       , testCase "toEnum (error)" $
-          assertBool "should be 𝕷" ∘ isLeft $
+          assertBool "should be 𝓛" ∘ isLeft $
             toEnum @(BoundedError _) @Word8 @Ordering @(𝔼 _) 3
-      , testCase "toEnum'"   $ 𝕽 ii @=? to'Enum' ii
+      , testCase "toEnum'"   $ 𝓡 ii @=? to'Enum' ii
       , testCase "toEnum_"   $ EQ @=? to'Enum_ 1
       , testCase "toEnum_ (error)" $
           (catch_error_call $ toEnum_ @Word8 @Ordering 3) ≫
-            (assertBool "should be 𝕷" ∘ isLeft)
+            (assertBool "should be 𝓛" ∘ isLeft)
       , testCase "allEnum"   $ [LT,EQ,GT] @=? allEnum
       ]
 
@@ -289,11 +288,7 @@ enumTests = testGroup "enum" $
 
 natNegTests ∷ TestTree
 natNegTests = testGroup "natNeg" $
-  let -- ($!) is variant of ($) that forces its argument to WHNF
-      -- this is necessary to force the error to be evaluated
-      catch_error_call f =
-        catch (return $! 𝕽 $! f) (\ (e ∷ ErrorCall) -> return $ 𝕷 e)
-      propNatNegNotNeg ∷ ℤ → ℤ → 𝔹
+  let propNatNegNotNeg ∷ ℤ → ℤ → 𝔹
       propNatNegNotNeg a b = (abs a) `natNeg` (abs b) ≥ 0
       propNatNegDecreases ∷ ℤ → ℤ → 𝔹
       propNatNegDecreases a b = (abs a) `natNeg` (abs b) ≤ (abs a)
@@ -321,14 +316,14 @@ operatorTests = testGroup "operators" $
   , testCase "Word8 1 - 2" $ 255 @=? (1∷Word8) - 2
   , testCase "Word8 150 * 2" $ 44 @=? (150∷Word8) * 2
   , testCase "Word8 100 × 3" $ 44 @=? (100∷Word8) × 3
-  , testCase "Word8 2 ⨹ 2" $ 𝕽 4 @=? (2∷Word8) ⨹ 2
+  , testCase "Word8 2 ⨹ 2" $ 𝓡 4 @=? (2∷Word8) ⨹ 2
   , testCase "Word8 255 ⨹ 2" $
-      assertBool "should be 𝕷" ∘ isLeft $ (255∷Word8) ⨹ 2
-  , testCase "Word8 2 ⨺ 1" $ 𝕽 1 @=? (2∷Word8) ⨺ 1
+      assertBool "should be 𝓛" ∘ isLeft $ (255∷Word8) ⨹ 2
+  , testCase "Word8 2 ⨺ 1" $ 𝓡 1 @=? (2∷Word8) ⨺ 1
   , testCase "Word8 1 ⨺ 2" $
-      assertBool "should be 𝕷" ∘ isLeft $ (1∷Word8) ⨺ 2
+      assertBool "should be 𝓛" ∘ isLeft $ (1∷Word8) ⨺ 2
   , testCase "Word8 29 ⨻ 9" $
-      assertBool "should be 𝕷" ∘ isLeft $ (29∷Word8) ⨻ 9
+      assertBool "should be 𝓛" ∘ isLeft $ (29∷Word8) ⨻ 9
   , testProperty "⨹ bounds (W8)" (propOpRespectsBounds @Word8 (⨹) (+))
   , testProperty "⨹ bounds (W64)" (propOpRespectsBounds @Word64 (⨹) (+))
   , testProperty "⨺ bounds (W8)" (propOpRespectsBounds @Word8 (⨺) (-))

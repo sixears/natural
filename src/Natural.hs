@@ -3,12 +3,17 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE UnicodeSyntax              #-}
 
+{-| Operations and support for natural numbers, including versions of `length`,
+   `replicate`, etc.; also related support for unsigned values in general; and
+   some type-level natural numbers -}
+
 module Natural
-  ( AtMost(Cons, Nil)
+  ( Abs(abs, abs', abs'')
+  , AtMost(Cons, Nil)
   , Countable(count)
   , Four
   , I64
-  , Length(len, len_, length)
+  , Length(len, len_, length, ℓ, щ, ỻ)
   , Nat(S, Z)
   , Natty(Sy, Zy)
   , None
@@ -17,9 +22,7 @@ module Natural
   , Replicate(replicate, replicate_)
   , Three
   , Two
-  , Unsigned(boundMax, boundMax', fromI, fromI0, fromI', fromI_, ı, ị, ɨ)
   , ℕ
-  , abs
   , allEnum
   , atMost
   , atMostOne
@@ -49,42 +52,38 @@ module Natural
   , (⨻)
   ) where
 
-import Debug.Trace ( traceShow )
-
 import Base0T hiding ( abs, (÷), (⊕) )
 import Base0T qualified
 
 import GHC.Enum qualified
-import GHC.Num qualified
-import GHC.Real qualified
 
-import GHC.Enum  ( Bounded, maxBound )
-import GHC.Float ( Double, logBase )
-import GHC.Num   ( Num )
-import GHC.Real  ( Integral, Real, divMod, fromIntegral, toRational )
+import GHC.Enum ( Bounded, maxBound )
+import GHC.Num  ( Num )
+import GHC.Real ( Integral, Real, divMod, fromIntegral, toRational )
 
 -- base --------------------------------
 
 import Data.Foldable qualified
 import Data.List qualified
+import Prelude qualified
 
 import Control.Applicative ( Alternative )
 import Data.Bits           ( FiniteBits(finiteBitSize), countLeadingZeros,
                              oneBits, testBit, xor, (.&.), (.<<.), (.>>.) )
-import Data.Bool           ( Bool(True) )
-import Data.Either         ( isLeft )
-import Data.Foldable       ( Foldable, elem )
-import Data.Function       ( flip )
-import Data.Int            ( Int16, Int32, Int64, Int8 )
-import Data.Kind           ( Type )
-import Data.List           ( dropWhile, zip )
-import Data.Maybe          ( fromJust, fromMaybe )
-import Data.Ord            ( Ordering(EQ, GT, LT), compare )
-import Data.Ratio          ( Ratio, denominator, numerator, (%) )
-import Data.Tuple          ( uncurry )
-import Data.Typeable       ( typeOf )
-import GHC.Exts            ( Int )
-import Prelude             ( Enum, error )
+-- import Data.Bool           ( Bool(False, True) )
+import Data.Either ( isLeft )
+-- import Data.Foldable       ( Foldable, elem )
+import Data.Foldable ( Foldable )
+import Data.Function ( flip )
+import Data.Int      ( Int16, Int32, Int64, Int8 )
+import Data.Kind     ( Type )
+import Data.List     ( zip )
+import Data.Ord      ( Ordering(EQ, GT, LT) )
+import Data.Ratio    ( Ratio, denominator, numerator )
+import Data.Tuple    ( uncurry )
+import Data.Typeable ( typeOf )
+import GHC.Exts      ( Int )
+import Prelude       ( Enum, error )
 
 -- base-unicode-symbols ----------------
 
@@ -103,11 +102,13 @@ import Control.Lens.Traversal ( both )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Applicative ( (∤), (⊵) )
-import Data.MoreUnicode.Bool        ( 𝔹, pattern 𝕱, pattern 𝕿 )
-import Data.MoreUnicode.Either      ( 𝔼, pattern 𝕷, pattern 𝕽 )
+import Data.MoreUnicode.Bool        ( 𝔹, pattern 𝓕, pattern 𝓣 )
+import Data.MoreUnicode.Either      ( 𝔼, pattern 𝓛, pattern 𝓡 )
 import Data.MoreUnicode.Functor     ( (⊳), (⩺) )
-import Data.MoreUnicode.Maybe       ( 𝕄, pattern 𝕵, pattern 𝕹 )
+import Data.MoreUnicode.Maybe       ( 𝕄, pattern 𝕵, pattern 𝕹, ⅎ )
 import Data.MoreUnicode.Monoid      ( ю )
+import Data.MoreUnicode.Num         ( (÷) )
+import Data.MoreUnicode.Ord         ( (≶), (≷) )
 import Data.MoreUnicode.Semigroup   ( (◇) )
 import Data.MoreUnicode.Text        ( 𝕋 )
 
@@ -120,15 +121,21 @@ import Test.Tasty.QuickCheck ( Property, property, (===) )
 import Data.Text      qualified as Text
 import Data.Text.Lazy qualified as LazyText
 
+-- while -------------------------------
+
+import While ( dropWhile )
+
 ------------------------------------------------------------
 --                     local imports                      --
 ------------------------------------------------------------
 
 import Natural.BoundedError ( AsBoundedError,
                               BEType(LowerBoundType, UpperBoundType),
-                              BoundedError, BoundedErrorType(UpperBound), bound,
-                              boundedErrorType, throwLowerBoundError,
-                              throwUpperBoundError )
+                              BoundedError, bound, boundedErrorType,
+                              throwLowerBoundError, throwUpperBoundError )
+import Natural.Unsigned     ( I64(I64),
+                              Unsigned(boundMax, boundMax', fromI, fromI', fromI0, fromI_, ı, ɨ, ị),
+                              i64ToInt )
 
 --------------------------------------------------------------------------------
 
@@ -174,43 +181,11 @@ instance Show (Natty n) where
   show z = "Natty " ◇ _show z
 
 instance Eq (Natty n) where
-  Zy     == Zy     = True
-{-
-    • Couldn't match type ‘'Z’ with ‘'S n1’
-      Inaccessible code in
-        a pattern with constructor:
-          Sy :: forall (n :: Nat). Natty n -> Natty ('S n),
-        in an equation for ‘==’
-    • In the pattern: Sy _
-      In an equation for ‘==’: Zy == (Sy _) = False
-      In the instance declaration for ‘Eq (Natty n)’
-
-  Zy     == (Sy _) = False
--}
-{-
-    • Couldn't match type ‘'S n1’ with ‘'Z’
-      Inaccessible code in
-        a pattern with constructor: Zy :: Natty 'Z, in an equation for ‘==’
-    • In the pattern: Zy
-      In an equation for ‘==’: (Sy _) == Zy = False
-      In the instance declaration for ‘Eq (Natty n)’
-
-  (Sy _) == Zy     = False
--}
+  Zy     == Zy     = 𝓣
   (Sy n) == (Sy m) = n == m
 
 instance Ord (Natty n) where
-  Zy     <= _      = True
-{-
-    • Couldn't match type ‘'S n1’ with ‘'Z’
-      Inaccessible code in
-        a pattern with constructor: Zy :: Natty 'Z, in an equation for ‘<=’
-    • In the pattern: Zy
-      In an equation for ‘<=’: (Sy _) <= Zy = False
-      In the instance declaration for ‘Ord (Natty n)’
-
-  (Sy _) <= Zy     = False
--}
+  Zy     <= _      = 𝓣
   (Sy n) <= (Sy m) = n <= m
 
 ------------------------------------------------------------
@@ -258,98 +233,6 @@ four  = Sy three
 
 eBound ∷ Show ω ⇒ 𝔼 (BoundedError ω) ν → ν
 eBound = either (error ∘ show) id
-
-------------------------------------------------------------
-
-class Typeable ν ⇒ Unsigned ν where
-  {-| like `maxBound`, but 𝕹 if no upper bound -}
-  boundMax' ∷ Integral ν ⇒ ν → 𝕄 ν
-  {-| like `maxBound`, but as an ℤ, or 𝕹 if no upper bound -}
-  boundMax ∷ Integral ν ⇒ ν → 𝕄 ℤ
-  boundMax = toInteger ⩺ boundMax'
-
-  {-| convert from a general integral type, throwing as necessary -}
-  fromI ∷ ∀ ε β η . (Integral ν, Integral β, AsBoundedError ε ν,MonadError ε η)⇒
-          β → η ν
-  -- we cannot do this as a set of guards (e.g., `fromI i | i < 0 = ...`),
-  -- because we need to pre-construct (lexically) the value i' to take its
-  -- `typeOf`.  I tried implying the type from the return, etc., and using a
-  -- proxy, but GHC can't handle the type inference there
-  fromI i = let i' = fromIntegral i
-            in  if i < 0
-                then throwLowerBoundError (typeOf i') (toInteger i) 0
-                else case boundMax' i' of
-                       𝕹 → return i'
-                       𝕵 m → if toInteger i > toInteger m
-                             then throwUpperBoundError (typeOf i')
-                                                       (toInteger i) m
-                             else return i'
-
-  ı ∷ ∀ ε β η . (Integral ν, Integral β, AsBoundedError ε ν, MonadError ε η) ⇒
-      β → η ν
-  ı = fromI
-
-  {-| convert from a general integral type, return  0 for negative values -}
-  fromI0  ∷ ∀ ε β η . (Integral ν,Integral β,AsBoundedError ε ν,MonadError ε η)⇒
-            β → η ν
-  fromI0 i | i < 0     = return 0
-           | otherwise = fromI i
-  ị ∷ ∀ ε β η . (Integral ν, Integral β, AsBoundedError ε ν, MonadError ε η) ⇒
-      β → η ν
-  ị= fromI0
-
-  {-| convert from a general integral type, return 0 / maxBound for out-of-bound
-      values -}
-  fromI'  ∷ (Integral ν, Integral β) ⇒ β → ν
-  fromI' i | i < 0     = 0
-           | otherwise = let i' = fromIntegral i
-                         in  case boundMax i' of
-                               𝕹   → i'
-                               𝕵 m → if toInteger i > m
-                                     then fromIntegral m
-                                     else i'
-
-  {-| convert from a general integral type, error as necessary -}
-  fromI_  ∷ (Integral ν, Integral β, Show ν) ⇒ β → ν
-  fromI_ = eBound ∘ fromI
-  ɨ ∷ (Integral ν, Show ν, Integral β) ⇒ β → ν
-  ɨ = fromI_
-
---------------------
-
-instance Unsigned ℕ where
-  boundMax' _ = 𝕹
-
---------------------
-
-instance Unsigned Word8 where
-  boundMax' _ = 𝕵 $ maxBound @Word8
-
-instance Unsigned Word16 where
-  boundMax' _ = 𝕵 $ maxBound @Word16
-
-instance Unsigned Word32 where
-  boundMax' _ = 𝕵 $ maxBound @Word32
-
-instance Unsigned Word64 where
-  boundMax' _ = 𝕵 $ maxBound @Word64
-
-------------------------------------------------------------
-
-{-| Like Int64, but unsigned.  Notably, maxBound @I64 ≡ maxBound @Int64;
-    which is maxBound @64 ÷ 2 -}
-newtype I64 = I64 Word64
-  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
-
-instance Unsigned I64 where
-  boundMax' _ = 𝕵 $ fromIntegral (maxBound @Int64)
-
-instance Bounded I64 where
-  minBound = 0
-  maxBound = fromIntegral $ maxBound @Int64
-
-i64ToInt ∷ I64 → Int
-i64ToInt (I64 w) = fromIntegral w
 
 ------------------------------------------------------------
 
@@ -411,31 +294,49 @@ class Replicate α ν | α -> ν where
       ([β], (Lazy)Text, (Lazy)ByteString); (any type whose maxBound is ≥
       maxBound @Int64): there will be no error.
    -}
-  replicate ∷ ∀ ε η.(Unsigned ν,Integral ν,AsBoundedError ε ν,MonadError ε η)⇒
+  replicate ∷ ∀ ε η.(Unsigned ν,Integral ν,AsBoundedError ε ν,MonadError ε η) ⇒
               ν → Item α → η α
+  drop ∷ ∀ ε η . (Unsigned ν ,Integral ν, AsBoundedError ε ν ,MonadError ε η) ⇒
+         ν → α → η α
+  take ∷ ∀ ε η . (Unsigned ν ,Integral ν, AsBoundedError ε ν ,MonadError ε η) ⇒
+         ν → α → η α
 
   -- in practice, there will be no error with anything that fits into an I64,
   -- that is, [0,maxBound @Int64]
   {-| as `replicate`, but any error is thrown as a runtime `BoundedError` -}
   replicate_ ∷ (Unsigned ν, Integral ν, Show ν) ⇒ ν → Item α → α
   replicate_ n = eBound ∘ replicate n
+  drop_ ∷ (Unsigned ν, Integral ν, Show ν) ⇒ ν → α → α
+  drop_ n = eBound ∘ drop n
+  take_ ∷ (Unsigned ν, Integral ν, Show ν) ⇒ ν → α → α
+  take_ n = eBound ∘ take n
 
 instance Replicate [α] I64 where
   replicate n c = flip Data.List.replicate c ∘ fromIntegral ⊳ ı n
+  drop n c = flip Data.List.drop c ∘ fromIntegral ⊳ ı n
+  take n c = flip Data.List.take c ∘ fromIntegral ⊳ ı n
 
 instance Replicate 𝕋 I64 where
   replicate n c = flip Text.replicate (Text.singleton c) ∘ fromIntegral ⊳ ı n
+  drop n c = flip Text.drop c ∘ fromIntegral ⊳ ı n
+  take n c = flip Text.take c ∘ fromIntegral ⊳ ı n
 
 instance Replicate LazyText.Text I64 where
   replicate n c =
     flip LazyText.replicate (LazyText.singleton c) ∘ fromIntegral ⊳ ı n
+  drop n c = flip LazyText.drop c ∘ fromIntegral ⊳ ı n
+  take n c = flip LazyText.take c ∘ fromIntegral ⊳ ı n
 
 instance Replicate BS.ByteString I64 where
   replicate n c = flip BS.replicate c ∘ fromIntegral ⊳ ı n
+  drop n c = flip BS.drop c ∘ fromIntegral ⊳ ı n
+  take n c = flip BS.take c ∘ fromIntegral ⊳ ı n
 
 instance Replicate BSL.ByteString I64 where
   replicate n c =
     flip BSL.replicate c ∘ fromIntegral ⊳ ı n
+  drop n c = flip BSL.drop c ∘ fromIntegral ⊳ ı n
+  take n c = flip BSL.take c ∘ fromIntegral ⊳ ı n
 
 ----------------------------------------
 
@@ -459,7 +360,7 @@ toEnum input = do
   result ← (GHC.Enum.toEnum ∘ i64ToInt ⩺ ı) input
   let max_result = maxBound
       max_int = fromEnum_ max_result -- max input value for this enum
-  if 𝕿
+  if 𝓣
   then (if fromIntegral input > max_int
         then throwUpperBoundError (typeOf I64) (fromIntegral input) max_int
         else return result)
@@ -541,7 +442,7 @@ bits x = testBit x ⊳ ([(finiteBitSize x)-1,(finiteBitSize x)-2..0])
                  AsBoundedError ε ν, MonadError ε η) ⇒ ν → ν → η ν
 a ⊕ b =
   case dropWhile (uncurry xor) $ (zip (bits a) (bits b)) of
-    ((𝕿,𝕿) : _ ) → throwUpperBoundError (typeOf a) (ĩ a + ĩ b) (mb a)
+    ((𝓣,𝓣) : _ ) → throwUpperBoundError (typeOf a) (ĩ a + ĩ b) (mb a)
     _            → return $ a + b
 
 
@@ -549,10 +450,10 @@ a ⊕ b =
                MonadError (BoundedError ν) η) ⇒ ν → ν → η ν
 (⨹) = (⊕)
 
-(⊞) ∷ ∀ ν η . (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν) ⇒ ν → ν → ν
+(⊞) ∷ (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν) ⇒ ν → ν → ν
 a ⊞ b = case a ⨹ b of
-          𝕽 c → c
-          𝕷 e → bound e
+          𝓡 c → c
+          𝓛 e → bound e
 
 (⊖) ∷ ∀ ε ν η . (Unsigned ν, Integral ν, AsBoundedError ε ν, MonadError ε η) ⇒
        ν → ν → η ν
@@ -563,10 +464,10 @@ a ⊖ b = if b > a
 (⨺) ∷ ∀ ν η . (Unsigned ν,Integral ν,MonadError (BoundedError ν) η)⇒ν → ν → η ν
 (⨺) = (⊖)
 
-(⊟) ∷ ∀ ν η . (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν) ⇒ ν → ν → ν
+(⊟) ∷ (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν) ⇒ ν → ν → ν
 a ⊟ b = case a ⨺ b of
-          𝕽 c → c
-          𝕷 e → 0
+          𝓡 c → c
+          𝓛 _ → 0
 
 (⊗) ∷ ∀ ε ν η . (Unsigned ν, Integral ν, Bounded ν, FiniteBits ν,
                  AsBoundedError ε ν, MonadError ε η) ⇒
@@ -593,9 +494,9 @@ a ⊗ b = do
                  GT → tooBig
                  LT → return $ a × b
                  EQ → case over both (> loBits a) (hi a × lo b, hi b × lo a) of
-                        (𝕿,_) → tooBig
-                        (_,𝕿) → tooBig
-                        (𝕱,𝕱) → foldM (⊕) 0 [ hi a × lo b .<<. w₂
+                        (𝓣,_) → tooBig
+                        (_,𝓣) → tooBig
+                        (𝓕,𝓕) → foldM (⊕) 0 [ hi a × lo b .<<. w₂
                                             , hi b × lo a .<<. w₂
                                             , lo a × lo b
                                             ]
@@ -604,11 +505,12 @@ a ⊗ b = do
                MonadError (BoundedError ν) η) ⇒ ν → ν → η ν
 (⨻) = (⊗)
 
+(⊠) ∷ (Unsigned β, Integral β, Bounded β, FiniteBits β) ⇒ β → β → β
 a ⊠ b = case a ⊗ b of
-          𝕷 e -> case boundedErrorType e of
+          𝓛 e -> case boundedErrorType e of
                    UpperBoundType -> ⅎ (boundMax' a)
                    LowerBoundType -> 0
-          𝕽 r -> r
+          𝓡 r -> r
 
 {-| Perform a bounded operation; compare the result to a given ℤ equivalent;
     if the equivalent function would produce an out-of-bounds result, then
@@ -620,28 +522,8 @@ propOpRespectsBounds ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show 
 propOpRespectsBounds f g a b =
   let x = g (toInteger a) (toInteger b)
   in  if x ≡ toInteger (asb a x)
-      then (toInteger ⊳ f a b) === 𝕽 x
+      then (toInteger ⊳ f a b) === 𝓡 x
       else property $ isLeft (f a b)
-
-
-
-(⧏) ∷ 𝕄 α → α → α
-(⧏) = flip fromMaybe
-
-(⧐) ∷ α → 𝕄 α → α
-(⧐) = fromMaybe
-
-ⅎ ∷ 𝕄 α → α
-ⅎ = fromJust
-
-{-| "is within bounds"; if a is within (l,u) inclusive, then EQ; else LT or GT
-    as appropriate -}
-
-(≶) ∷ Ord α ⇒ α → (𝕄 α, 𝕄 α) → Ordering
-a ≶ (l,u) =
-  let ḻ = a ⧐ l -- lower bound, use a if none provided
-      ū = a ⧐ u -- upper bound, use a if none provided
-  in if a < ḻ then LT else if a > ū then GT else EQ
 
 {-| Perform a bounded operation; compare the result to a given ℤ equivalent; if
     the equivalent function would produce an out-of-bounds result, then our
@@ -665,15 +547,17 @@ unNegate n | n < 0     = (SignMinus, GHC.Real.fromIntegral $ abs n)
 
 ----------------------------------------
 
-type RatioN = Ratio ℕ
-
 class (Ord α, Num α) ⇒ Abs α where
+  {-| when invoking `abs`, this is the target type -}
   type Abs' α ∷ Type
+  {-| abs, but correcting the type -}
   abs ∷ α → Abs' α
+  {-| like `Prelude.abs`, maintains the type -}
   abs' ∷ α → α
+  {-| like `abs'`, also return the sign of the original -}
   abs'' ∷ α → (NumSign,Abs' α)
   abs'' n | n < 0     = (SignMinus, abs n)
-         | otherwise = (SignPlus, abs n)
+          | otherwise = (SignPlus, abs n)
 
 instance Abs ℤ where
   type Abs' ℤ = ℕ
@@ -703,81 +587,13 @@ instance Abs Int8 where
 instance (Integral α, Abs α, Integral (Abs' α)) ⇒ Abs (Ratio α) where
   type Abs' (Ratio α) = Ratio (Abs' α)
   abs a = abs (numerator a) ÷ abs (denominator a)
+  abs' = Prelude.abs
+
+------------------------------------------------------------
+
+type RatioN = Ratio ℕ
 
 toRatioN ∷ Real α ⇒ α → (NumSign, RatioN)
 toRatioN (toRational → a) = abs'' a
-
-{-
-class Unsigned β ⇒ Length α β | α → β where
-  length    ∷ α → β
-  drop      ∷ β → α → α
-  take      ∷ β → α → α
-
-instance Length 𝕋 Word64 where
-  length    = fromIntegral ∘ Text.length
-  drop      = Text.drop ∘ fromIntegral
-  take      = Text.take ∘ fromIntegral
-
-instance Length LT.Text Word64 where
-  length = fromIntegral ∘ LT.length
-  drop   = LT.drop ∘ fromIntegral
-  take   = LT.take ∘ fromIntegral
-
--}
-{-
-instance Length ByteString where
-  length = fromIntegral ∘ BS.length
-
-instance Length LBS.ByteString where
-  length = fromIntegral ∘ LBS.length
-
-instance Length BS8.ByteString where
-  length = fromIntegral ∘ BS8.length
-
-instance Length LBS8.ByteString where
-  length = fromIntegral ∘ LBS8.length
--}
-
-{-
-class While α where
-  dropWhile ∷ (Item α → 𝔹) → α → α
-  takeWhile ∷ (Item α → 𝔹) → α → α
-
-instance While [α] where
-  dropWhile = Data.List.dropWhile
-  takeWhile = Data.List.takeWhile
-
-instance While 𝕋 where
-  dropWhile = Text.dropWhile
-  takeWhile = Text.takeWhile
-
-instance While LT.Text where
-  dropWhile = LT.dropWhile
-  takeWhile = LT.takeWhile
--}
-
--- … and ByteStrings …
-
-ӿ ∷ Printable ε ⇒ 𝔼 ε α → α
-ӿ = \ case 𝕷 e → error (toString e); 𝕽 r → r
-
-ⵥ ∷ Printable ε ⇒ 𝔼 ε α → α
-ⵥ = \ case 𝕷 e → error (toString e); 𝕽 r → r
-
-infix 4 ≷
--- (≷) ∷ Ord α ⇒ α → α → Ordering
-(≷) = compare
-
-class Member α where
-  type MemberItem α ∷ Type
-
-  (∈) ∷ Eq (MemberItem α) ⇒ MemberItem α → α → 𝔹
-
-instance Foldable ψ ⇒ Member (ψ β) where
-  type MemberItem (ψ β) = β
-  (∈) = elem
-
-(÷) ∷ Integral α ⇒ α → α → Ratio α
-(÷) = (%)
 
 -- that's all, folks! ----------------------------------------------------------
