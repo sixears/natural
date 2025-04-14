@@ -50,10 +50,7 @@ import Control.Lens.Review ( (#) )
 
 -- more-unicode ------------------------
 
-import Data.MoreUnicode.Lens      ( (⊣) )
-import Data.MoreUnicode.Maybe     ( 𝕄 )
-import Data.MoreUnicode.Monoid    ( ю )
-import Data.MoreUnicode.Semigroup ( (◇) )
+import Data.MoreUnicode.Lens ( (⊣) )
 
 -- mtl ---------------------------------
 

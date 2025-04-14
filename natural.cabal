@@ -16,7 +16,9 @@ library
   ghc-options:        -O2 -W -Wall -fhelpful-errors
   exposed-modules:    Natural
                     , Natural.BoundedError
+                    , Natural.Enum
                     , Natural.T.Natural
+                    , Natural.Replicate
                     , Natural.Unsigned
   other-modules:
   default-extensions: ConstrainedClassMethods
@@ -37,6 +39,7 @@ library
                     , TypeApplications
                     , TypeFamilies
                     , TypeSynonymInstances
+                    , UnicodeSyntax
                     , ViewPatterns
 
   build-depends:      base, base-unicode-symbols, bytestring, data-textual

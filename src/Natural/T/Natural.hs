@@ -59,12 +59,13 @@ import Data.Text.Lazy qualified as LazyText
 --                     local imports                      --
 ------------------------------------------------------------
 
-import Natural              ( I64, Length(len_, length), abs, allEnum, fromEnum,
-                              fromEnum_, natNeg, propOpBounded,
-                              propOpRespectsBounds, replicate, replicate_,
-                              toEnum, toEnum', toEnum_, (⊞), (⊟), (⊠), (⨹), (⨺),
-                              (⨻) )
+import Natural              ( I64, Length(len_, length), abs, natNeg,
+                              propOpBounded, propOpRespectsBounds, (⊞), (⊟),
+                              (⊠), (⨹), (⨺), (⨻) )
 import Natural.BoundedError ( BoundedError )
+import Natural.Enum         ( allEnum, fromEnum, fromEnum_, toEnum, toEnum',
+                              toEnum_ )
+import Natural.Replicate    ( replicate, replicate_ )
 import Natural.Unsigned     ( Unsigned(boundMax', fromI, fromI', fromI0) )
 
 

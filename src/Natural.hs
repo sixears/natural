@@ -19,26 +19,19 @@ module Natural
   , None
   , NumSign(..)
   , One
-  , Replicate(replicate, replicate_)
   , Three
   , Two
   , ℕ
-  , allEnum
   , atMost
   , atMostOne
   , atMostTwo
   , four
-  , fromEnum
-  , fromEnum_
   , natNeg
   , none
   , one
   , propOpBounded
   , propOpRespectsBounds
   , three
-  , toEnum
-  , toEnum'
-  , toEnum_
   , two
   , unNegate
   , zeroOneOrTwo
@@ -55,8 +48,6 @@ module Natural
 import Base0T hiding ( abs, (÷), (⊕) )
 import Base0T qualified
 
-import GHC.Enum qualified
-
 import GHC.Enum ( Bounded, maxBound )
 import GHC.Num  ( Num )
 import GHC.Real ( Integral, Real, divMod, fromIntegral, toRational )
@@ -64,26 +55,21 @@ import GHC.Real ( Integral, Real, divMod, fromIntegral, toRational )
 -- base --------------------------------
 
 import Data.Foldable qualified
-import Data.List qualified
 import Prelude qualified
 
 import Control.Applicative ( Alternative )
 import Data.Bits           ( FiniteBits(finiteBitSize), countLeadingZeros,
                              oneBits, testBit, xor, (.&.), (.<<.), (.>>.) )
--- import Data.Bool           ( Bool(False, True) )
-import Data.Either ( isLeft )
--- import Data.Foldable       ( Foldable, elem )
-import Data.Foldable ( Foldable )
-import Data.Function ( flip )
-import Data.Int      ( Int16, Int32, Int64, Int8 )
-import Data.Kind     ( Type )
-import Data.List     ( zip )
-import Data.Ord      ( Ordering(EQ, GT, LT) )
-import Data.Ratio    ( Ratio, denominator, numerator )
-import Data.Tuple    ( uncurry )
-import Data.Typeable ( typeOf )
-import GHC.Exts      ( Int )
-import Prelude       ( Enum, error )
+import Data.Either         ( isLeft )
+import Data.Foldable       ( Foldable )
+import Data.Int            ( Int16, Int32, Int64, Int8 )
+import Data.Kind           ( Type )
+import Data.List           ( zip )
+import Data.Ord            ( Ordering(EQ, GT, LT) )
+import Data.Ratio          ( Ratio, denominator, numerator )
+import Data.Tuple          ( uncurry )
+import Data.Typeable       ( typeOf )
+import Prelude             ( error )
 
 -- base-unicode-symbols ----------------
 
@@ -104,8 +90,8 @@ import Control.Lens.Traversal ( both )
 import Data.MoreUnicode.Applicative ( (∤), (⊵) )
 import Data.MoreUnicode.Bool        ( 𝔹, pattern 𝓕, pattern 𝓣 )
 import Data.MoreUnicode.Either      ( 𝔼, pattern 𝓛, pattern 𝓡 )
-import Data.MoreUnicode.Functor     ( (⊳), (⩺) )
-import Data.MoreUnicode.Maybe       ( 𝕄, pattern 𝕵, pattern 𝕹, ⅎ )
+import Data.MoreUnicode.Functor     ( (⊳) )
+import Data.MoreUnicode.Maybe       ( pattern 𝓙, ⅎ )
 import Data.MoreUnicode.Monoid      ( ю )
 import Data.MoreUnicode.Num         ( (÷) )
 import Data.MoreUnicode.Ord         ( (≶), (≷) )
@@ -133,9 +119,7 @@ import Natural.BoundedError ( AsBoundedError,
                               BEType(LowerBoundType, UpperBoundType),
                               BoundedError, bound, boundedErrorType,
                               throwLowerBoundError, throwUpperBoundError )
-import Natural.Unsigned     ( I64(I64),
-                              Unsigned(boundMax, boundMax', fromI, fromI', fromI0, fromI_, ı, ɨ, ị),
-                              i64ToInt )
+import Natural.Unsigned     ( I64, Unsigned(boundMax, boundMax', ı) )
 
 --------------------------------------------------------------------------------
 
@@ -288,108 +272,6 @@ instance Length BSL.ByteString Word64 where
 
 ------------------------------------------------------------
 
-class Replicate α ν | α -> ν where
-  {-| build an instance of type `α` from an unsigned number of `Item α`.
-      In practice, for all currently-supported types
-      ([β], (Lazy)Text, (Lazy)ByteString); (any type whose maxBound is ≥
-      maxBound @Int64): there will be no error.
-   -}
-  replicate ∷ ∀ ε η.(Unsigned ν,Integral ν,AsBoundedError ε ν,MonadError ε η) ⇒
-              ν → Item α → η α
-  drop ∷ ∀ ε η . (Unsigned ν ,Integral ν, AsBoundedError ε ν ,MonadError ε η) ⇒
-         ν → α → η α
-  take ∷ ∀ ε η . (Unsigned ν ,Integral ν, AsBoundedError ε ν ,MonadError ε η) ⇒
-         ν → α → η α
-
-  -- in practice, there will be no error with anything that fits into an I64,
-  -- that is, [0,maxBound @Int64]
-  {-| as `replicate`, but any error is thrown as a runtime `BoundedError` -}
-  replicate_ ∷ (Unsigned ν, Integral ν, Show ν) ⇒ ν → Item α → α
-  replicate_ n = eBound ∘ replicate n
-  drop_ ∷ (Unsigned ν, Integral ν, Show ν) ⇒ ν → α → α
-  drop_ n = eBound ∘ drop n
-  take_ ∷ (Unsigned ν, Integral ν, Show ν) ⇒ ν → α → α
-  take_ n = eBound ∘ take n
-
-instance Replicate [α] I64 where
-  replicate n c = flip Data.List.replicate c ∘ fromIntegral ⊳ ı n
-  drop n c = flip Data.List.drop c ∘ fromIntegral ⊳ ı n
-  take n c = flip Data.List.take c ∘ fromIntegral ⊳ ı n
-
-instance Replicate 𝕋 I64 where
-  replicate n c = flip Text.replicate (Text.singleton c) ∘ fromIntegral ⊳ ı n
-  drop n c = flip Text.drop c ∘ fromIntegral ⊳ ı n
-  take n c = flip Text.take c ∘ fromIntegral ⊳ ı n
-
-instance Replicate LazyText.Text I64 where
-  replicate n c =
-    flip LazyText.replicate (LazyText.singleton c) ∘ fromIntegral ⊳ ı n
-  drop n c = flip LazyText.drop c ∘ fromIntegral ⊳ ı n
-  take n c = flip LazyText.take c ∘ fromIntegral ⊳ ı n
-
-instance Replicate BS.ByteString I64 where
-  replicate n c = flip BS.replicate c ∘ fromIntegral ⊳ ı n
-  drop n c = flip BS.drop c ∘ fromIntegral ⊳ ı n
-  take n c = flip BS.take c ∘ fromIntegral ⊳ ı n
-
-instance Replicate BSL.ByteString I64 where
-  replicate n c =
-    flip BSL.replicate c ∘ fromIntegral ⊳ ı n
-  drop n c = flip BSL.drop c ∘ fromIntegral ⊳ ı n
-  take n c = flip BSL.take c ∘ fromIntegral ⊳ ı n
-
-----------------------------------------
-
-fromEnum ∷ ∀ ε α ν η .
-           (Unsigned ν,Integral ν,AsBoundedError ε ν,MonadError ε η,Enum α)⇒
-           α → η ν
-fromEnum = ı ∘ GHC.Enum.fromEnum
-
---------------------
-
-fromEnum_ ∷ ∀ α ν . (Unsigned ν, Integral ν, Enum α, Show ν) ⇒ α → ν
-fromEnum_ = ɨ ∘ GHC.Enum.fromEnum
-
-----------------------------------------
-
-toEnum ∷ ∀ ε ν α η .
-         (Bounded α, Enum α, Unsigned ν, Integral ν,
-          AsBoundedError ε I64, MonadError ε η)⇒
-         ν → η α
-toEnum input = do
-  result ← (GHC.Enum.toEnum ∘ i64ToInt ⩺ ı) input
-  let max_result = maxBound
-      max_int = fromEnum_ max_result -- max input value for this enum
-  if 𝓣
-  then (if fromIntegral input > max_int
-        then throwUpperBoundError (typeOf I64) (fromIntegral input) max_int
-        else return result)
-  else return max_result -- never used, just forces the type for max_result
-
---------------------
-
-{- | `toEnum`, but for not (upper-)bounded types.  If you use this for
-     a type with an upper bound, hilarity and/or sadness may ensue.
-
-     `GHC.Enum.toEnum ∷ Int -> α`; that `Int` is `Int64` in practice…
-     so in practice, enums (or at least toEnum) is restricted to `Int64`:
-     this is necessarily reflected in the type of `BoundedError`.
--}
-toEnum' ∷ ∀ ε ν α η .
-         (Enum α, Unsigned ν, Integral ν,
-          AsBoundedError ε I64, MonadError ε η)⇒
-         ν → η α
-toEnum' = GHC.Enum.toEnum ∘ i64ToInt ⩺ ı
-
---------------------
-
-toEnum_ ∷ ∀ ν α . (Unsigned ν, Integral ν, Enum α) ⇒ ν → α
-toEnum_ = GHC.Enum.toEnum ∘ i64ToInt ∘ ɨ
-
-----------------------------------------
-
-allEnum ∷ Enum α ⇒ [α]
-allEnum = GHC.Enum.enumFrom (toEnum_ @ℕ 0)
 
 ----------------------------------------
 
@@ -535,7 +417,7 @@ propOpBounded ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show β) ⇒
 propOpBounded f g a b =
   let x = g (toInteger a) (toInteger b)
       r = f a b
-  in  case x ≶ (𝕵 0, boundMax a) of
+  in  case x ≶ (𝓙 0, boundMax a) of
         LT -> r == 0
         EQ -> r == fromInteger x
         GT -> r == ⅎ (boundMax' a)
@@ -561,6 +443,11 @@ class (Ord α, Num α) ⇒ Abs α where
 
 instance Abs ℤ where
   type Abs' ℤ = ℕ
+  abs = fromIntegral ∘ Base0T.abs
+  abs' = Base0T.abs
+
+instance Abs I64 where
+  type Abs' I64 = Word64
   abs = fromIntegral ∘ Base0T.abs
   abs' = Base0T.abs
 
@@ -593,6 +480,7 @@ instance (Integral α, Abs α, Integral (Abs' α)) ⇒ Abs (Ratio α) where
 
 type RatioN = Ratio ℕ
 
+{-| convert a `Real` into fraction (`RatioN`), and a `NumSign` -}
 toRatioN ∷ Real α ⇒ α → (NumSign, RatioN)
 toRatioN (toRational → a) = abs'' a
 
