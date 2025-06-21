@@ -14,7 +14,7 @@ import Test.Tasty  ( TestTree, defaultMain, testGroup )
 --                     local imports                      --
 ------------------------------------------------------------
 
-import  Natural  ( tests )
+import Natural.T.Natural  ( tests )
 
 -------------------------------------------------------------------------------
 

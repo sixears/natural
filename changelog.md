@@ -1,3 +1,12 @@
+0.1.0.0 2025-06-21
+==================
+- +Abs(…), +I64, +Length(…), +RatioN
+- rename (⊖) to (⊟)
+- +(⊕), +(⨹), +(⊞), +(⨺), +(⊖), +(⊗), +(⨻), +(⊠)
+- mv *Enum to Natural/Enum
+- Natural/BoundedError
+- move tests to Natural/T/Natural.hs
+
 0.0.5.0 2023-08-17
 ==================
 - export NumSign(..)

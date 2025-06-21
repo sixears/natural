@@ -9,14 +9,15 @@ import Prelude ( ($!) )
 -- base --------------------------------
 
 import Control.Exception ( ErrorCall, catch )
+import Data.Bits         ( FiniteBits )
 import Data.Either       ( isLeft, isRight )
 import Data.Int          ( Int32, Int64 )
 import Data.Maybe        ( fromJust )
 import Data.Ord          ( Ordering(EQ, GT, LT) )
 import Data.Typeable     ( typeOf )
-import GHC.Enum          ( maxBound )
+import GHC.Enum          ( Bounded, maxBound )
 import GHC.Exts          ( Int )
-import GHC.Num           ( (*) )
+import GHC.Num           ( Num, (*) )
 import GHC.Real          ( Integral )
 
 -- base-unicode-symbols ----------------
@@ -32,8 +33,11 @@ import Data.ByteString.Lazy qualified as BSL
 
 import Data.MoreUnicode.Bool      ( 𝔹 )
 import Data.MoreUnicode.Either    ( 𝔼, pattern 𝓛, pattern 𝓡 )
+import Data.MoreUnicode.Functor   ( (⊳) )
+import Data.MoreUnicode.Maybe     ( pattern 𝓙, ⅎ )
 import Data.MoreUnicode.Monad     ( (≫) )
 import Data.MoreUnicode.Monoid    ( ю )
+import Data.MoreUnicode.Ord       ( (≶) )
 import Data.MoreUnicode.Semigroup ( (◇) )
 import Data.MoreUnicode.String    ( 𝕊 )
 import Data.MoreUnicode.Text      ( 𝕋 )
@@ -48,7 +52,7 @@ import Test.Tasty.HUnit ( Assertion, assertBool )
 
 -- tasty-quickcheck --------------------
 
-import Test.Tasty.QuickCheck ( Property, testProperty, (==>) )
+import Test.Tasty.QuickCheck ( Property, property, testProperty, (===), (==>) )
 
 -- text --------------------------------
 
@@ -59,14 +63,13 @@ import Data.Text.Lazy qualified as LazyText
 --                     local imports                      --
 ------------------------------------------------------------
 
-import Natural              ( I64, Length(len_, length), abs, natNeg,
-                              propOpBounded, propOpRespectsBounds, (⊞), (⊟),
+import Natural              ( I64, Length(len_, length), abs, natNeg, (⊞), (⊟),
                               (⊠), (⨹), (⨺), (⨻) )
 import Natural.BoundedError ( BoundedError )
 import Natural.Enum         ( allEnum, fromEnum, fromEnum_, toEnum, toEnum',
                               toEnum_ )
 import Natural.Replicate    ( replicate, replicate_ )
-import Natural.Unsigned     ( Unsigned(boundMax', fromI, fromI', fromI0) )
+import Natural.Unsigned     ( Unsigned(boundMax, boundMax', fromI, fromI', fromI0) )
 
 
 --------------------------------------------------------------------------------
@@ -312,39 +315,72 @@ natNegTests = testGroup "natNeg" $
 
 operatorTests ∷ TestTree
 operatorTests = testGroup "operators" $
-  [ testCase "Word8 2 + 2" $ 4 @=? (2∷Word8) + 2
-  , testCase "Word8 255 + 2" $ 1 @=? (255∷Word8) + 2
-  , testCase "Word8 1 - 2" $ 255 @=? (1∷Word8) - 2
-  , testCase "Word8 150 * 2" $ 44 @=? (150∷Word8) * 2
-  , testCase "Word8 100 × 3" $ 44 @=? (100∷Word8) × 3
-  , testCase "Word8 2 ⨹ 2" $ 𝓡 4 @=? (2∷Word8) ⨹ 2
-  , testCase "Word8 255 ⨹ 2" $
-      assertBool "should be 𝓛" ∘ isLeft $ (255∷Word8) ⨹ 2
-  , testCase "Word8 2 ⨺ 1" $ 𝓡 1 @=? (2∷Word8) ⨺ 1
-  , testCase "Word8 1 ⨺ 2" $
-      assertBool "should be 𝓛" ∘ isLeft $ (1∷Word8) ⨺ 2
-  , testCase "Word8 29 ⨻ 9" $
-      assertBool "should be 𝓛" ∘ isLeft $ (29∷Word8) ⨻ 9
-  , testProperty "⨹ bounds (W8)" (propOpRespectsBounds @Word8 (⨹) (+))
-  , testProperty "⨹ bounds (W64)" (propOpRespectsBounds @Word64 (⨹) (+))
-  , testProperty "⨺ bounds (W8)" (propOpRespectsBounds @Word8 (⨺) (-))
-  , testProperty "⨺ bounds (W64)" (propOpRespectsBounds @Word64 (⨺) (-))
-  , testProperty "⨻ bounds (W8)" (propOpRespectsBounds @Word8 (⨻) (×))
-  , testProperty "⨻ bounds (W64)" (propOpRespectsBounds @Word64 (⨻) (×))
-  , testProperty "⊞ bounds (W8)"
-    (\ (a ∷ Word8) (b ∷ Word8) ->
-       a ⊞ b ≡ let r = (toInteger a) + (toInteger b)
-               in  if r > (toInteger $ maxBound @Word8)
-                   then maxBound ∷ Word8
-                   else fromIntegral r
-    )
-  , testProperty "⊞ bounds (W8)"  (propOpBounded @Word8 (⊞) (+))
-  , testProperty "⊟ bounds (W8)"  (propOpBounded @Word8 (⊟) (-))
-  , testProperty "⊠ bounds (W8)"  (propOpBounded @Word8 (⊠) (×))
-  , testProperty "⊞ bounds (W64)" (propOpBounded @Word64 (⊞) (+))
-  , testProperty "⊟ bounds (W64)" (propOpBounded @Word64 (⊟) (-))
-  , testProperty "⊠ bounds (W64)" (propOpBounded @Word64 (⊠) (×))
-  ]
+  let {- | Use `fromIntegral` to convert an ℤ to an instance of the type of some
+           other `Num` -}
+      asb ∷ Num α ⇒ α → ℤ → α
+      asb _ z = fromIntegral z
+
+      {-| Perform a bounded operation; compare the result to a given ℤ equivalent;
+          if the equivalent function would produce an out-of-bounds result, then
+          our bounded operation should give a BoundedError; else, it should produce
+          a bounded equivalent to the Integer value. -}
+      propOpRespectsBounds ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show β) ⇒
+                             ( β → β → 𝔼 (BoundedError β) β)
+                           → (ℤ → ℤ → ℤ) → β → β → Property
+      propOpRespectsBounds f g a b =
+        let x = g (toInteger a) (toInteger b)
+        in  if x ≡ toInteger (asb a x)
+            then (toInteger ⊳ f a b) === 𝓡 x
+            else property $ isLeft (f a b)
+
+      {-| Perform a bounded operation; compare the result to a given ℤ equivalent; if
+          the equivalent function would produce an out-of-bounds result, then our
+          bounded operation should give the bounded equivalent; else the bounded
+          equivalent to the Integer value. -}
+      propOpBounded ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show β) ⇒
+                      (β → β → β)
+                    → (ℤ → ℤ → ℤ) → β → β → 𝔹
+      propOpBounded f g a b =
+        let x = g (toInteger a) (toInteger b)
+            r = f a b
+        in  case x ≶ (𝓙 0, boundMax a) of
+              LT -> r == 0
+              EQ -> r == fromInteger x
+              GT -> r == ⅎ (boundMax' a)
+
+  in [ testCase "Word8 2 + 2" $ 4 @=? (2∷Word8) + 2
+     , testCase "Word8 255 + 2" $ 1 @=? (255∷Word8) + 2
+     , testCase "Word8 1 - 2" $ 255 @=? (1∷Word8) - 2
+     , testCase "Word8 150 * 2" $ 44 @=? (150∷Word8) * 2
+     , testCase "Word8 100 × 3" $ 44 @=? (100∷Word8) × 3
+     , testCase "Word8 2 ⨹ 2" $ 𝓡 4 @=? (2∷Word8) ⨹ 2
+     , testCase "Word8 255 ⨹ 2" $
+         assertBool "should be 𝓛" ∘ isLeft $ (255∷Word8) ⨹ 2
+     , testCase "Word8 2 ⨺ 1" $ 𝓡 1 @=? (2∷Word8) ⨺ 1
+     , testCase "Word8 1 ⨺ 2" $
+         assertBool "should be 𝓛" ∘ isLeft $ (1∷Word8) ⨺ 2
+     , testCase "Word8 29 ⨻ 9" $
+         assertBool "should be 𝓛" ∘ isLeft $ (29∷Word8) ⨻ 9
+     , testProperty "⨹ bounds (W8)" (propOpRespectsBounds @Word8 (⨹) (+))
+     , testProperty "⨹ bounds (W64)" (propOpRespectsBounds @Word64 (⨹) (+))
+     , testProperty "⨺ bounds (W8)" (propOpRespectsBounds @Word8 (⨺) (-))
+     , testProperty "⨺ bounds (W64)" (propOpRespectsBounds @Word64 (⨺) (-))
+     , testProperty "⨻ bounds (W8)" (propOpRespectsBounds @Word8 (⨻) (×))
+     , testProperty "⨻ bounds (W64)" (propOpRespectsBounds @Word64 (⨻) (×))
+     , testProperty "⊞ bounds (W8)"
+       (\ (a ∷ Word8) (b ∷ Word8) ->
+          a ⊞ b ≡ let r = (toInteger a) + (toInteger b)
+                  in  if r > (toInteger $ maxBound @Word8)
+                      then maxBound ∷ Word8
+                      else fromIntegral r
+       )
+     , testProperty "⊞ bounds (W8)"  (propOpBounded @Word8 (⊞) (+))
+     , testProperty "⊟ bounds (W8)"  (propOpBounded @Word8 (⊟) (-))
+     , testProperty "⊠ bounds (W8)"  (propOpBounded @Word8 (⊠) (×))
+     , testProperty "⊞ bounds (W64)" (propOpBounded @Word64 (⊞) (+))
+     , testProperty "⊟ bounds (W64)" (propOpBounded @Word64 (⊟) (-))
+     , testProperty "⊠ bounds (W64)" (propOpBounded @Word64 (⊠) (×))
+     ]
 
 -- tests -----------------------------------------------------------------------
 

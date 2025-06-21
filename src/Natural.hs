@@ -19,6 +19,7 @@ module Natural
   , None
   , NumSign(..)
   , One
+  , RatioN
   , Three
   , Two
   , ℕ
@@ -29,9 +30,8 @@ module Natural
   , natNeg
   , none
   , one
-  , propOpBounded
-  , propOpRespectsBounds
   , three
+  , toRatioN
   , two
   , unNegate
   , zeroOneOrTwo
@@ -60,7 +60,6 @@ import Prelude qualified
 import Control.Applicative ( Alternative )
 import Data.Bits           ( FiniteBits(finiteBitSize), countLeadingZeros,
                              oneBits, testBit, xor, (.&.), (.<<.), (.>>.) )
-import Data.Either         ( isLeft )
 import Data.Foldable       ( Foldable )
 import Data.Int            ( Int16, Int32, Int64, Int8 )
 import Data.Kind           ( Type )
@@ -88,19 +87,15 @@ import Control.Lens.Traversal ( both )
 -- more-unicode ------------------------
 
 import Data.MoreUnicode.Applicative ( (∤), (⊵) )
-import Data.MoreUnicode.Bool        ( 𝔹, pattern 𝓕, pattern 𝓣 )
+import Data.MoreUnicode.Bool        ( pattern 𝓕, pattern 𝓣 )
 import Data.MoreUnicode.Either      ( 𝔼, pattern 𝓛, pattern 𝓡 )
 import Data.MoreUnicode.Functor     ( (⊳) )
-import Data.MoreUnicode.Maybe       ( pattern 𝓙, ⅎ )
+import Data.MoreUnicode.Maybe       ( ⅎ )
 import Data.MoreUnicode.Monoid      ( ю )
 import Data.MoreUnicode.Num         ( (÷) )
-import Data.MoreUnicode.Ord         ( (≶), (≷) )
+import Data.MoreUnicode.Ord         ( (≷) )
 import Data.MoreUnicode.Semigroup   ( (◇) )
 import Data.MoreUnicode.Text        ( 𝕋 )
-
--- tasty-quickcheck --------------------
-
-import Test.Tasty.QuickCheck ( Property, property, (===) )
 
 -- text --------------------------------
 
@@ -119,7 +114,7 @@ import Natural.BoundedError ( AsBoundedError,
                               BEType(LowerBoundType, UpperBoundType),
                               BoundedError, bound, boundedErrorType,
                               throwLowerBoundError, throwUpperBoundError )
-import Natural.Unsigned     ( I64, Unsigned(boundMax, boundMax', ı) )
+import Natural.Unsigned     ( I64, Unsigned(boundMax', ı) )
 
 --------------------------------------------------------------------------------
 
@@ -272,9 +267,6 @@ instance Length BSL.ByteString Word64 where
 
 ------------------------------------------------------------
 
-
-----------------------------------------
-
 zeroOneOrTwo ∷ Alternative f ⇒ f a → f [a]
 zeroOneOrTwo a = go (2 :: ℕ)
   where
@@ -292,7 +284,8 @@ natNeg x y = if x ≥ y then x - y else 0
    consistent with the standard library.  Where that makes no sense (e.g.,
    `(0∷ℕ)-1`); it errors (arithmetic underflow).
 
-   We use circled operators (⊕), (⊖), (⊗) for error-generating arithmetic.
+   We use circled operators (⊕), (⊖), (⊗) for error-generating arithmetic;
+   that is, each operates within a MonadError (AsBoundedError) context.
 
    The triangle operators (⨹), (⨺), (⨻) are as for the circled operators; but
    specialized to BoundedError.
@@ -306,11 +299,6 @@ natNeg x y = if x ≥ y then x - y else 0
 {- | `maxBound`, for some input type -}
 mb ∷ Bounded ν ⇒ ν → ν
 mb _ = maxBound
-
-{- | Use `fromIntegral` to convert an ℤ to an instance of the type of some other
-     `Num` -}
-asb ∷ Num α ⇒ α → ℤ → α
-asb _ z = fromIntegral z
 
 {- | the simple binary repr of an unsigned int value; as a list of bools,
      most-significant first -}
@@ -393,34 +381,6 @@ a ⊠ b = case a ⊗ b of
                    UpperBoundType -> ⅎ (boundMax' a)
                    LowerBoundType -> 0
           𝓡 r -> r
-
-{-| Perform a bounded operation; compare the result to a given ℤ equivalent;
-    if the equivalent function would produce an out-of-bounds result, then
-    our bounded operation should give a BoundedError; else, it should produce
-    a bounded equivalent to the Integer value. -}
-propOpRespectsBounds ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show β) ⇒
-                       ( β → β → 𝔼 (BoundedError β) β)
-                     → (ℤ → ℤ → ℤ) → β → β → Property
-propOpRespectsBounds f g a b =
-  let x = g (toInteger a) (toInteger b)
-  in  if x ≡ toInteger (asb a x)
-      then (toInteger ⊳ f a b) === 𝓡 x
-      else property $ isLeft (f a b)
-
-{-| Perform a bounded operation; compare the result to a given ℤ equivalent; if
-    the equivalent function would produce an out-of-bounds result, then our
-    bounded operation should give the bounded equivalent; else the bounded
-    equivalent to the Integer value. -}
-propOpBounded ∷ (Unsigned β,Integral β,Bounded β,FiniteBits β,Show β) ⇒
-                (β → β → β)
-              → (ℤ → ℤ → ℤ) → β → β → 𝔹
-propOpBounded f g a b =
-  let x = g (toInteger a) (toInteger b)
-      r = f a b
-  in  case x ≶ (𝓙 0, boundMax a) of
-        LT -> r == 0
-        EQ -> r == fromInteger x
-        GT -> r == ⅎ (boundMax' a)
 
 {-| split an integer into a natural number and a `NumSign` -}
 unNegate ∷ ℤ → (NumSign,ℕ)
