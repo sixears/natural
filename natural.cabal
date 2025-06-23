@@ -20,6 +20,7 @@ library
                     , Natural.BoundedError
                     , Natural.Countable
                     , Natural.Enum
+                    , Natural.Length
                     , Natural.Nat
                     , Natural.Natty
                     , Natural.NumSign
