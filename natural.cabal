@@ -15,8 +15,14 @@ build-type:          Simple
 library
   ghc-options:        -O2 -W -Wall -fhelpful-errors
   exposed-modules:    Natural
+                    , Natural.Abs
+                    , Natural.AtMost
                     , Natural.BoundedError
+                    , Natural.Countable
                     , Natural.Enum
+                    , Natural.Nat
+                    , Natural.Natty
+                    , Natural.NumSign
                     , Natural.T.Natural
                     , Natural.Replicate
                     , Natural.Unsigned
