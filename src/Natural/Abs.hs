@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UnicodeSyntax        #-}
 module Natural.Abs
-  ( Abs(abs, abs', abs'', ꬰ)
+  ( Abs(abs, abs', abs'', ꬰ, ⱥ)
   , toRatioN
   , unNegate
   ) where
@@ -45,6 +45,10 @@ class (Ord α, Num α) ⇒ Abs α where
   abs'' ∷ α → (NumSign,Abs' α)
   abs'' n | n < 0     = (SignMinus, abs n)
           | otherwise = (SignPlus, abs n)
+  {-| unicode alias for `abs''` -}
+  ⱥ :: α → (NumSign, Abs' α)
+  ⱥ = abs''
+
 
 instance Abs ℤ where
   type Abs' ℤ = ℕ
