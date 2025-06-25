@@ -18,6 +18,8 @@ import Base0T
 
 -- base --------------------------------
 
+import Data.Bits     ( Bits,
+                       FiniteBits(countLeadingZeros, countTrailingZeros, finiteBitSize) )
 import Data.Int      ( Int, Int16, Int32, Int64, Int8 )
 import Data.Typeable ( typeOf )
 import Prelude       ( Bounded(maxBound, minBound), Enum, Integral, Num, Real )
@@ -117,7 +119,7 @@ instance Unsigned Word64 where
 {-| Like Int64, but unsigned.  Notably, maxBound @I64 ≡ maxBound @Int64;
     which is maxBound @Word64 ÷ 2 -}
 newtype I64 = I64 Word64
-  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+  deriving newtype (Bits, Enum, Eq, Integral, Num, Ord, Real, Show)
 
 instance Unsigned I64 where
   boundMax' _ = 𝓙 $ fromIntegral (maxBound @Int64)
@@ -125,6 +127,11 @@ instance Unsigned I64 where
 instance Bounded I64 where
   minBound = 0
   maxBound = fromIntegral $ maxBound @Int64
+
+instance FiniteBits I64 where
+  finiteBitSize = const 63
+  countLeadingZeros (I64 n) = countLeadingZeros n
+  countTrailingZeros (I64 n) = countTrailingZeros n
 
 i64ToInt ∷ I64 → Int
 i64ToInt (I64 w) = fromIntegral w
@@ -134,7 +141,7 @@ i64ToInt (I64 w) = fromIntegral w
 {-| Like Int32, but unsigned.  Notably, maxBound @I32 ≡ maxBound @Int32;
     which is maxBound @Word32 ÷ 2 -}
 newtype I32 = I32 Word32
-  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+  deriving newtype (Bits, Enum, Eq, Integral, Num, Ord, Real, Show)
 
 instance Unsigned I32 where
   boundMax' _ = 𝓙 $ fromIntegral (maxBound @Int32)
@@ -142,6 +149,11 @@ instance Unsigned I32 where
 instance Bounded I32 where
   minBound = 0
   maxBound = fromIntegral $ maxBound @Int32
+
+instance FiniteBits I32 where
+  finiteBitSize = const 31
+  countLeadingZeros (I32 n) = countLeadingZeros n
+  countTrailingZeros (I32 n) = countTrailingZeros n
 
 i32ToInt ∷ I32 → Int
 i32ToInt (I32 w) = fromIntegral w
@@ -151,7 +163,7 @@ i32ToInt (I32 w) = fromIntegral w
 {-| Like Int16, but unsigned.  Notably, maxBound @I16 ≡ maxBound @Int16;
     which is maxBound @Word16 ÷ 2 -}
 newtype I16 = I16 Word16
-  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+  deriving newtype (Bits, Enum, Eq, Integral, Num, Ord, Real, Show)
 
 instance Unsigned I16 where
   boundMax' _ = 𝓙 $ fromIntegral (maxBound @Int16)
@@ -159,6 +171,11 @@ instance Unsigned I16 where
 instance Bounded I16 where
   minBound = 0
   maxBound = fromIntegral $ maxBound @Int16
+
+instance FiniteBits I16 where
+  finiteBitSize = const 15
+  countLeadingZeros (I16 n) = countLeadingZeros n
+  countTrailingZeros (I16 n) = countTrailingZeros n
 
 i16ToInt ∷ I16 → Int
 i16ToInt (I16 w) = fromIntegral w
@@ -168,7 +185,7 @@ i16ToInt (I16 w) = fromIntegral w
 {-| Like Int8, but unsigned.  Notably, maxBound @I8 ≡ maxBound @Int8;
     which is maxBound @Word8 ÷ 2 -}
 newtype I8 = I8 Word8
-  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+  deriving newtype (Bits, Enum, Eq, Integral, Num, Ord, Real, Show)
 
 instance Unsigned I8 where
   boundMax' _ = 𝓙 $ fromIntegral (maxBound @Int8)
@@ -176,6 +193,11 @@ instance Unsigned I8 where
 instance Bounded I8 where
   minBound = 0
   maxBound = fromIntegral $ maxBound @Int8
+
+instance FiniteBits I8 where
+  finiteBitSize = const 7
+  countLeadingZeros (I8 n) = countLeadingZeros n
+  countTrailingZeros (I8 n) = countTrailingZeros n
 
 i8ToInt ∷ I8 → Int
 i8ToInt (I8 w) = fromIntegral w
