@@ -27,7 +27,7 @@ import Data.MoreUnicode.Num ( (÷) )
 ------------------------------------------------------------
 
 import Natural.NumSign  ( NumSign(SignMinus, SignPlus) )
-import Natural.Unsigned ( I64 )
+import Natural.Unsigned ( I16, I32, I64, I8 )
 
 --------------------------------------------------------------------------------
 
@@ -56,27 +56,42 @@ instance Abs ℤ where
   abs' = Base0T.abs
 
 instance Abs I64 where
-  type Abs' I64 = Word64
+  type Abs' I64 = I64
   abs = fromIntegral ∘ Base0T.abs
   abs' = Base0T.abs
 
 instance Abs Int64 where
-  type Abs' Int64 = Word64
+  type Abs' Int64 = I64
+  abs = fromIntegral ∘ Base0T.abs
+  abs' = Base0T.abs
+
+instance Abs I32 where
+  type Abs' I32 = I32
   abs = fromIntegral ∘ Base0T.abs
   abs' = Base0T.abs
 
 instance Abs Int32 where
-  type Abs' Int32 = Word32
+  type Abs' Int32 = I32
+  abs = fromIntegral ∘ Base0T.abs
+  abs' = Base0T.abs
+
+instance Abs I16 where
+  type Abs' I16 = I16
   abs = fromIntegral ∘ Base0T.abs
   abs' = Base0T.abs
 
 instance Abs Int16 where
-  type Abs' Int16 = Word16
+  type Abs' Int16 = I16
+  abs = fromIntegral ∘ Base0T.abs
+  abs' = Base0T.abs
+
+instance Abs I8 where
+  type Abs' I8 = I8
   abs = fromIntegral ∘ Base0T.abs
   abs' = Base0T.abs
 
 instance Abs Int8 where
-  type Abs' Int8 = Word8
+  type Abs' Int8 = I8
   abs = fromIntegral ∘ Base0T.abs
   abs' = Base0T.abs
 

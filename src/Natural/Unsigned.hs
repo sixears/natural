@@ -3,16 +3,22 @@
 
 {-# LANGUAGE UnicodeSyntax              #-}
 module Natural.Unsigned
-  ( I64(I64)
+  ( I16(I16)
+  , I32(I32)
+  , I64(I64)
+  , I8(I8)
   , Unsigned(boundMax, boundMax', fromI, fromI0, fromI', fromI_, ı, ị, ɨ)
+  , i16ToInt
+  , i32ToInt
   , i64ToInt
+  , i8ToInt
   ) where
 
 import Base0T
 
 -- base --------------------------------
 
-import Data.Int      ( Int, Int64 )
+import Data.Int      ( Int, Int16, Int32, Int64, Int8 )
 import Data.Typeable ( typeOf )
 import Prelude       ( Bounded(maxBound, minBound), Enum, Integral, Num, Real )
 
@@ -122,5 +128,56 @@ instance Bounded I64 where
 
 i64ToInt ∷ I64 → Int
 i64ToInt (I64 w) = fromIntegral w
+
+------------------------------------------------------------
+
+{-| Like Int32, but unsigned.  Notably, maxBound @I32 ≡ maxBound @Int32;
+    which is maxBound @Word32 ÷ 2 -}
+newtype I32 = I32 Word32
+  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+
+instance Unsigned I32 where
+  boundMax' _ = 𝓙 $ fromIntegral (maxBound @Int32)
+
+instance Bounded I32 where
+  minBound = 0
+  maxBound = fromIntegral $ maxBound @Int32
+
+i32ToInt ∷ I32 → Int
+i32ToInt (I32 w) = fromIntegral w
+
+------------------------------------------------------------
+
+{-| Like Int16, but unsigned.  Notably, maxBound @I16 ≡ maxBound @Int16;
+    which is maxBound @Word16 ÷ 2 -}
+newtype I16 = I16 Word16
+  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+
+instance Unsigned I16 where
+  boundMax' _ = 𝓙 $ fromIntegral (maxBound @Int16)
+
+instance Bounded I16 where
+  minBound = 0
+  maxBound = fromIntegral $ maxBound @Int16
+
+i16ToInt ∷ I16 → Int
+i16ToInt (I16 w) = fromIntegral w
+
+------------------------------------------------------------
+
+{-| Like Int8, but unsigned.  Notably, maxBound @I8 ≡ maxBound @Int8;
+    which is maxBound @Word8 ÷ 2 -}
+newtype I8 = I8 Word8
+  deriving newtype (Enum, Eq, Integral, Num, Ord, Real, Show)
+
+instance Unsigned I8 where
+  boundMax' _ = 𝓙 $ fromIntegral (maxBound @Int8)
+
+instance Bounded I8 where
+  minBound = 0
+  maxBound = fromIntegral $ maxBound @Int8
+
+i8ToInt ∷ I8 → Int
+i8ToInt (I8 w) = fromIntegral w
 
 -- that's all, folks! ----------------------------------------------------------

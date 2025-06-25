@@ -32,7 +32,7 @@ import Data.Text.Lazy qualified as LazyText
 ------------------------------------------------------------
 
 import Natural.BoundedError ( AsBoundedError, BoundedError )
-import Natural.Unsigned     ( Unsigned(ı) )
+import Natural.Unsigned     ( I64, Unsigned(ı) )
 
 --------------------------------------------------------------------------------
 
@@ -68,27 +68,27 @@ class (Unsigned ν, Integral ν) ⇒ Length α ν | α → ν where
 
 --------------------
 
-instance Foldable ψ ⇒ Length (ψ α) Word64 where
+instance Foldable ψ ⇒ Length (ψ α) I64 where
   len = ı ∘ Data.Foldable.length
 
 --------------------
 
-instance Length 𝕋 Word64 where
+instance Length 𝕋 I64 where
   len    = ı ∘ Text.length
 
 --------------------
 
-instance Length LazyText.Text Word64 where
+instance Length LazyText.Text I64 where
   len    = ı ∘ LazyText.length
 
 --------------------
 
-instance Length BS.ByteString Word64 where
+instance Length BS.ByteString I64 where
   len = ı ∘ BS.length
 
 --------------------
 
-instance Length BSL.ByteString Word64 where
+instance Length BSL.ByteString I64 where
   len = ı ∘ BSL.length
 
 -- that's all, folks! ----------------------------------------------------------
