@@ -63,8 +63,9 @@ import Data.Text.Lazy qualified as LazyText
 --                     local imports                      --
 ------------------------------------------------------------
 
-import Natural              ( I64, Length(len_, length), abs, natNeg, (⊞), (⊟),
-                              (⊠), (⨹), (⨺), (⨻) )
+import Natural              ( I64, Length(len_, length), natNeg, (⊞), (⊟), (⊠),
+                              (⨹), (⨺), (⨻) )
+import Natural.Abs          ( abs )
 import Natural.BoundedError ( BoundedError )
 import Natural.Enum         ( allEnum, fromEnum, fromEnum_, toEnum, toEnum',
                               toEnum_ )

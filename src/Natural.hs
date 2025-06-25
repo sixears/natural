@@ -8,8 +8,7 @@
    some type-level natural numbers -}
 
 module Natural
-  ( Abs(abs, abs', abs'')
-  , AtMost(Cons, Nil)
+  ( AtMost(Cons, Nil)
   , Countable(count)
   , Four
   , I64
@@ -17,9 +16,7 @@ module Natural
   , Nat(S, Z)
   , Natty(Sy, Zy)
   , None
-  , NumSign(..)
   , One
-  , RatioN
   , Three
   , Two
   , ℕ
@@ -31,9 +28,7 @@ module Natural
   , none
   , one
   , three
-  , toRatioN
   , two
-  , unNegate
   , zeroOneOrTwo
   , (⊕)
   , (⊖)
@@ -46,26 +41,20 @@ module Natural
   ) where
 
 import Base0T hiding ( abs, (÷), (⊕) )
-import Base0T qualified
 
 import GHC.Enum ( Bounded, maxBound )
-import GHC.Num  ( Num )
-import GHC.Real ( Integral, Real, divMod, fromIntegral, toRational )
+import GHC.Real ( Integral, divMod )
 
 -- base --------------------------------
 
 import Data.Foldable qualified
-import Prelude qualified
 
 import Control.Applicative ( Alternative )
 import Data.Bits           ( FiniteBits(finiteBitSize), countLeadingZeros,
                              oneBits, testBit, xor, (.&.), (.<<.), (.>>.) )
 import Data.Foldable       ( Foldable )
-import Data.Int            ( Int16, Int32, Int64, Int8 )
-import Data.Kind           ( Type )
 import Data.List           ( zip )
 import Data.Ord            ( Ordering(EQ, GT, LT) )
-import Data.Ratio          ( Ratio, denominator, numerator )
 import Data.Tuple          ( uncurry )
 import Data.Typeable       ( typeOf )
 import Prelude             ( error )
@@ -92,7 +81,6 @@ import Data.MoreUnicode.Either      ( 𝔼, pattern 𝓛, pattern 𝓡 )
 import Data.MoreUnicode.Functor     ( (⊳) )
 import Data.MoreUnicode.Maybe       ( ⅎ )
 import Data.MoreUnicode.Monoid      ( ю )
-import Data.MoreUnicode.Num         ( (÷) )
 import Data.MoreUnicode.Ord         ( (≷) )
 import Data.MoreUnicode.Semigroup   ( (◇) )
 import Data.MoreUnicode.Text        ( 𝕋 )
@@ -117,10 +105,6 @@ import Natural.BoundedError ( AsBoundedError,
 import Natural.Unsigned     ( I64, Unsigned(boundMax', ı) )
 
 --------------------------------------------------------------------------------
-
-data NumSign = SignPlus | SignMinus deriving (Eq, Show)
-
-------------------------------------------------------------
 
 class Countable α where
   count :: α → ℕ
@@ -381,67 +365,5 @@ a ⊠ b = case a ⊗ b of
                    UpperBoundType -> ⅎ (boundMax' a)
                    LowerBoundType -> 0
           𝓡 r -> r
-
-{-| split an integer into a natural number and a `NumSign` -}
-unNegate ∷ ℤ → (NumSign,ℕ)
-unNegate n | n < 0     = (SignMinus, GHC.Real.fromIntegral $ abs n)
-           | otherwise = (SignPlus,  GHC.Real.fromIntegral n)
-
-----------------------------------------
-
-class (Ord α, Num α) ⇒ Abs α where
-  {-| when invoking `abs`, this is the target type -}
-  type Abs' α ∷ Type
-  {-| abs, but correcting the type -}
-  abs ∷ α → Abs' α
-  {-| like `Prelude.abs`, maintains the type -}
-  abs' ∷ α → α
-  {-| like `abs'`, also return the sign of the original -}
-  abs'' ∷ α → (NumSign,Abs' α)
-  abs'' n | n < 0     = (SignMinus, abs n)
-          | otherwise = (SignPlus, abs n)
-
-instance Abs ℤ where
-  type Abs' ℤ = ℕ
-  abs = fromIntegral ∘ Base0T.abs
-  abs' = Base0T.abs
-
-instance Abs I64 where
-  type Abs' I64 = Word64
-  abs = fromIntegral ∘ Base0T.abs
-  abs' = Base0T.abs
-
-instance Abs Int64 where
-  type Abs' Int64 = Word64
-  abs = fromIntegral ∘ Base0T.abs
-  abs' = Base0T.abs
-
-instance Abs Int32 where
-  type Abs' Int32 = Word32
-  abs = fromIntegral ∘ Base0T.abs
-  abs' = Base0T.abs
-
-instance Abs Int16 where
-  type Abs' Int16 = Word16
-  abs = fromIntegral ∘ Base0T.abs
-  abs' = Base0T.abs
-
-instance Abs Int8 where
-  type Abs' Int8 = Word8
-  abs = fromIntegral ∘ Base0T.abs
-  abs' = Base0T.abs
-
-instance (Integral α, Abs α, Integral (Abs' α)) ⇒ Abs (Ratio α) where
-  type Abs' (Ratio α) = Ratio (Abs' α)
-  abs a = abs (numerator a) ÷ abs (denominator a)
-  abs' = Prelude.abs
-
-------------------------------------------------------------
-
-type RatioN = Ratio ℕ
-
-{-| convert a `Real` into fraction (`RatioN`), and a `NumSign` -}
-toRatioN ∷ Real α ⇒ α → (NumSign, RatioN)
-toRatioN (toRational → a) = abs'' a
 
 -- that's all, folks! ----------------------------------------------------------

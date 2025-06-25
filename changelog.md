@@ -1,3 +1,7 @@
+0.1.2.0 2025-06-25
+==================
+- remove duplication from Natural, Natural.Abs
+
 0.1.1.2 2025-06-25
 ==================
 - add Bits,FiniteBits instances for I{64,32,16,8}
